@@ -23,7 +23,7 @@ ext {
     libraryDescription = 'Tejora\'s Utility Library For Android'
     siteUrl = 'https://github.com/praveen-kanwar/Utils'
     gitUrl = 'https://github.com/praveen-kanwar/Utils.git'
-    libraryVersion = '1.0.0'
+    libraryVersion = '1.0.1'
     developerId = 'praveen-kanwar'
     developerName = 'Praveen Kanwar'
     developerEmail = 'praveen.kanwar@tejora.com'
@@ -61,6 +61,7 @@ dependencies {
 
     implementation 'androidx.appcompat:appcompat:1.0.2'
     implementation "androidx.core:core-ktx:1.0.2"
+    implementation "javax.inject:javax.inject:1"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 
     testImplementation 'junit:junit:4.12'
