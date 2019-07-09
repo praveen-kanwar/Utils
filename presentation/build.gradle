@@ -1,69 +1,17 @@
-buildscript {
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        classpath 'com.github.dcendents:android-maven-gradle-plugin:2.1'
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.4'
-    }
-}
+apply plugin: 'com.android.application'
 
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android-extensions'
 apply plugin: 'kotlin-android'
-apply plugin: 'com.github.dcendents.android-maven'
-apply plugin: 'com.jfrog.bintray'
 
-ext {
-    bintrayRepo = 'UtilsRepository'
-    bintrayName = 'UtilsPackage'
-    publishedGroupId = 'com.tejora'
-    libraryName = 'Utils'
-    artifact = 'utils'
-    libraryDescription = 'Tejora\'s Utility Library For Android'
-    siteUrl = 'https://github.com/praveen-kanwar/Utils'
-    gitUrl = 'https://github.com/praveen-kanwar/Utils.git'
-    libraryVersion = '1.0.2'
-    developerId = 'praveen-kanwar'
-    developerName = 'Praveen Kanwar'
-    developerEmail = 'praveen.kanwar@tejora.com'
-    organization = 'tejora-technologies'
-    licenseName = 'The Apache Software License, Version 2.0'
-    licenseUrl = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-    allLicenses = ["Apache-2.0"]
-}
-
-android {
-    compileSdkVersion 28
-
-
-    defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 28
-        versionCode 1
-        versionName "1.0.0"
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-    }
-
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-    }
-
-}
+apply plugin: 'kotlin-android-extensions'
 
 android {
     // Build Specifications
     compileSdkVersion 28
     buildToolsVersion '28.0.3'
 
-    // To Auto Increment VersionName & VersionCode of Library
+    // To Auto Increment VersionName & VersionCode of Application
     def versionPropsFile = file('version.properties')
-    // Setting Default Value
+    // Setting default value
     def versionC = 0000
     def versionN = '0.0.0.0'
     if (versionPropsFile.canRead()) {
@@ -82,13 +30,34 @@ android {
         throw new FileNotFoundException("Unable to read versioning file")
     }
 
+    // Signing Credential File
+    def keystorePropertiesFile = file('keystore.properties')
+    // Properties object to access Keystore file
+    def keystoreProperties = new Properties()
+    if (keystorePropertiesFile.canRead()) {
+        keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    } else {
+        throw new FileNotFoundException("Unable to keystore file for signing")
+    }
+
+    // Signing Config
+    signingConfigs {
+        release {
+            storeFile file(keystoreProperties['storeFile'].toString())
+            storePassword keystoreProperties['storePassword'].toString()
+            keyAlias keystoreProperties['keyAlias'].toString()
+            keyPassword keystoreProperties['keyPassword'].toString()
+        }
+    }
+
     // Application Specifications
     defaultConfig {
+        applicationId 'com.tejora.utils.sample'
         minSdkVersion 21
         targetSdkVersion 28
+        multiDexEnabled true
         versionCode versionC
         versionName versionN
-
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
@@ -116,17 +85,21 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-
     flavorDimensions "version"
     productFlavors {
         sandbox {
             dimension "version"
+            applicationIdSuffix ".sandbox"
+            versionNameSuffix "_sandbox"
         }
         uat {
             dimension "version"
+            applicationIdSuffix ".uat"
+            versionNameSuffix "_uat"
         }
         prod {
             dimension "version"
+            signingConfig signingConfigs.release
         }
     }
 
@@ -143,6 +116,17 @@ android {
         }
     }
 
+    // Rename Generated APK With Relevant Name
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def project = "UtilsSample"
+            def separator = "_"
+            def version = variant.versionName
+            def newApkName = "${project}${separator}${version}.apk"
+            outputFileName = new File(newApkName)
+        }
+    }
+
     dexOptions {
         preDexLibraries = false
     }
@@ -156,27 +140,30 @@ android {
 
 dependencies {
     // Reference To BuildSystem Package
-    def utilsDependencies = rootProject.ext.utilsDependencies
-    def utilsTestDependencies = rootProject.ext.utilsTestDependencies
+    def presentationDependencies = rootProject.ext.presentationDependencies
+    def presentationTestDependencies = rootProject.ext.presentationTestDependencies
 
     // Basic Dependencies
     implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation project(':utils')
 
     // All Maven & Google Repository Dependencies
-    implementation utilsDependencies.appCompat
-    implementation utilsDependencies.coreKTX
-    implementation utilsDependencies.javaX
-    implementation utilsDependencies.kotlin
-    implementation utilsDependencies.rxJava
+    implementation presentationDependencies.appCompat
+    implementation presentationDependencies.constraintLayout
+
+
+    implementation presentationDependencies.coreKTX
+    implementation presentationDependencies.kotlin
+    implementation presentationDependencies.legacySupport
+    implementation presentationDependencies.material
+
 
     // Android UI Testing Libraries
-    testImplementation utilsTestDependencies.junit
+    testImplementation presentationTestDependencies.junit
 
     // Android UI Testing Libraries
-    androidTestImplementation utilsTestDependencies.androidXJunit
-    androidTestImplementation utilsTestDependencies.espresso
-    androidTestImplementation utilsTestDependencies.runner
+    androidTestImplementation presentationTestDependencies.androidXJunit
+    androidTestImplementation presentationTestDependencies.espresso
+    androidTestImplementation presentationTestDependencies.runner
 }
 
-apply from: 'install.gradle'
-apply from: 'bintray.gradle'
