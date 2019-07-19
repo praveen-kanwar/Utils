@@ -8,7 +8,13 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import com.scottyab.rootbeer.RootBeer
+import io.reactivex.Observable
 import io.reactivex.disposables.Disposable
+import java.io.File
+import java.io.FileOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -114,7 +120,9 @@ constructor(private val context: Context) {
         editText.setSelection(editText.text.toString().length)
     }
 
-    /* To Check Email Pattern */
+    /**
+     *  To Check Email Pattern
+     */
     @Suppress("unused")
     fun isValidEmail(email: String): Boolean {
         showLog(TAG, "isValidEmail($email)")
@@ -122,7 +130,9 @@ constructor(private val context: Context) {
             .matches()
     }
 
-    /* To Check If Network Is Available or not */
+    /**
+     *  To Check If Network Is Available or not
+     */
     @Suppress("unused")
     fun isNetworkAvailable(): Boolean {
         showLog(TAG, "isNetworkAvailable($context)")
@@ -137,7 +147,12 @@ constructor(private val context: Context) {
      */
     private fun getBuildType(): Boolean {
         try {
-            val clazz = Class.forName(context.packageName + ".BuildConfig")
+            // Get Package Name, Also Remove If uat or sandbox is appended.
+            val packageName = context.packageName
+                .replace(".uat", "", true)
+                .replace(".sandbox", "", true)
+                .plus(".BuildConfig")
+            val clazz = Class.forName(packageName)
             val field = clazz.getField(DEBUG)
             return field.get(null) != null
         } catch (e: ClassNotFoundException) {
@@ -148,6 +163,66 @@ constructor(private val context: Context) {
             e.printStackTrace()
         }
         return false
+    }
+
+    /**
+     *  Return String Extracted From Zip File
+     */
+    @Suppress("unused")
+    fun unzip(zipFileName: String): Observable<String> {
+        return Observable.create {
+            try {
+                val zipFileInputStream = context.assets.open(zipFileName)
+                val buffer = ByteArray(1024)
+                val zis = ZipInputStream(zipFileInputStream)
+                var ze: ZipEntry? = zis.nextEntry
+                var newFile: File? = null
+                while (ze != null) {
+                    val fileName = ze.name
+                    newFile = File.createTempFile(fileName, ".tmp", context.cacheDir)
+                    newFile.deleteOnExit()
+                    if (ze.isDirectory) {
+                        newFile.mkdirs()
+                    } else {
+                        File(newFile.parent).mkdirs()
+                        val fos = FileOutputStream(newFile)
+                        var len = zis.read(buffer)
+                        while (len > 0) {
+                            fos.write(buffer, 0, len)
+                            len = zis.read(buffer)
+                        }
+                        fos.close()
+                    }
+                    ze = zis.nextEntry
+                }
+                zis.closeEntry()
+                zis.close()
+                zipFileInputStream.close()
+                // Emitting
+                it.onNext(String(newFile!!.readBytes()))
+                // Completing
+                it.onComplete()
+            } catch (error: Exception) {
+                it.onError(error)
+            }
+        }
+    }
+
+    /**
+     *  Detect Device Is Rooted Or Not
+     */
+    @Suppress("unused")
+    fun isDeviceSafe(): Observable<Boolean> {
+        return Observable.create {
+            try {
+                // Emitting
+                it.onNext(RootBeer(context).isRootedWithoutBusyBoxCheck)
+                // Completing
+                it.onComplete()
+            } catch (error: Exception) {
+                it.onError(error)
+            }
+        }
     }
 
     companion object {
