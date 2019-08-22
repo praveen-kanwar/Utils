@@ -1,7 +1,11 @@
 package com.tejora.utils
 
+import android.app.Activity
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.ConnectivityManager
+import android.os.Build
+import android.util.Base64
 import android.util.Log
 import android.util.Patterns
 import android.view.inputmethod.InputMethodManager
@@ -13,6 +17,7 @@ import io.reactivex.Observable
 import io.reactivex.disposables.Disposable
 import java.io.File
 import java.io.FileOutputStream
+import java.security.MessageDigest
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import javax.inject.Inject
@@ -39,7 +44,7 @@ constructor(private val context: Context) {
     @Suppress("unused")
     fun showLog(TAG: String, message: String) {
         try {
-            if (getBuildType()) {
+            if (isApplicationDebuggable()) {
                 Log.e(TAG, message)
             }
         } catch (e: Exception) {
@@ -52,8 +57,7 @@ constructor(private val context: Context) {
     fun showToast(message: String) {
         showLog(TAG, "showToast($context, $message)")
         try {
-            Toast.makeText(context, message, Toast.LENGTH_SHORT)
-                .show()
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -69,30 +73,46 @@ constructor(private val context: Context) {
      */
     @Suppress("unused")
     fun showDialog(
-        pageName: String = "Page From Dialog Is Displayed",
-        reasonForDisplay: String = "Reason To Display Dialog.",
-        title: String = "Dialog Title",
-        message: String = "Message To Be Displayed..",
-        cancelMessage: String = "Cancel",
-        okayMessage: String = "Okay"
+        activity: Activity, // As Dialog Can Be Displayed Over Activity Hence Activity Context Or Activity Is Required.
+        pageName: String = "", //Fragment/Activity Where Dialog Is Displayed
+        reasonForDisplay: String = "", //Reason To Display Dialog.
+        title: String? = null, // Dialog Title
+        message: String = "", //Message To Be Displayed..
+        cancelMessage: String? = null, // Cancel/Negative Button Text
+        okayMessage: String = "Okay" // Okay/Positive Button Text
     ) {
         try {
-            val response = TejoraDialogResponse(pageName, reasonForDisplay, title, message, cancelMessage, okayMessage)
-            context.let { context ->
-                AlertDialog.Builder(context)
-                    .setMessage(message)
-                    .setPositiveButton(okayMessage) { dialog, _ ->
-                        response.userOpted = okayMessage
-                        TejoraBus.publish(response)
-                        dialog.dismiss()
+            // Creating Default Response
+            val response = TejoraDialogResponse(
+                pageName,
+                reasonForDisplay,
+                title,
+                message,
+                cancelMessage,
+                okayMessage
+            )
+            activity.let { suppliedActivity ->
+                val alertDialog =
+                    AlertDialog.Builder(suppliedActivity) // Create Alert Dialog Builder
+                if (title != null) {
+                    alertDialog.setTitle(title) // Set Title If Supplied
+                }
+                alertDialog.setMessage(message) // Set Message
+                // Set Positive Button
+                alertDialog.setPositiveButton(okayMessage) { dialog, _ ->
+                    response.userOpted = okayMessage // Set User Opted Acceptance
+                    TejoraBus.publish(response) // Publish User Selection
+                    dialog.dismiss() // Dismiss Dialog
+                }
+                // Set Negative Button If Supplied/Required As Per User Requirement
+                if (cancelMessage != null) {
+                    alertDialog.setNegativeButton(cancelMessage) { dialog, _ ->
+                        response.userOpted = cancelMessage // Set User Opted For Rejection
+                        TejoraBus.publish(response) // Publish User Selection
+                        dialog.dismiss() // Dismiss Dialog
                     }
-                    .setNegativeButton(cancelMessage) { dialog, _ ->
-                        response.userOpted = cancelMessage
-                        TejoraBus.publish(response)
-                        dialog.dismiss()
-                    }
-                    .create()
-                    .show()
+                }
+                alertDialog.create().show() // Display Dialog
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -145,7 +165,7 @@ constructor(private val context: Context) {
      *  Return True If Build Is [DEBUG] Type.
      *  Return False If Build Is [RELEASE] Type.
      */
-    private fun getBuildType(): Boolean {
+    fun isApplicationDebuggable(): Boolean {
         try {
             // Get Package Name, Also Remove If uat or sandbox is appended.
             val packageName = context.packageName
@@ -225,8 +245,114 @@ constructor(private val context: Context) {
         }
     }
 
+    /**
+     *  Detect App Signature
+     *  Return 1 If Genuine
+     *  Return 2 If Non-Genuine
+     *  Return 3 If Unable To Verify
+     */
+    @Suppress("unused", "PackageManagerGetSignatures", "DEPRECATION")
+    fun isApplicationSignatureValid(actualSignature: String): Observable<Int> {
+        return Observable.create {
+            try {
+                val packageInfo = context.packageManager.getPackageInfo(
+                    context.packageName,
+                    PackageManager.GET_SIGNATURES
+                )
+                for (signature in packageInfo.signatures) {
+                    val signatureBytes = signature.toByteArray()
+                    val md = MessageDigest.getInstance("SHA")
+                    md.update(signatureBytes)
+                    val currentSignature = Base64.encodeToString(md.digest(), Base64.DEFAULT)
+                    //compare signatures
+                    if (actualSignature == currentSignature) {
+                        // Emitting
+                        it.onNext(VALID_APPLICATION)
+                        // Completing
+                        it.onComplete()
+                    } else {
+                        // Emitting
+                        it.onNext(INVALID_APPLICATION)
+                        // Completing
+                        it.onComplete()
+                    }
+
+                }
+            } catch (error: Exception) {
+                showLog(TAG, "Error Occurred While Checking Application Is Genuine Or Not.")
+                //it.onError(error)
+                // Emitting
+                it.onNext(UNABLE_TO_VERIFY_APPLICATION)
+                // Completing
+                it.onComplete()
+            }
+        }
+    }
+
+    /**
+     *  Detect If Application Is Installed Via PlayStore
+     *  Return True If Installed Via PlayStore
+     *  Return False If Installed Via Other Source
+     */
+    @Suppress("unused")
+    fun isInstalledFromPlayStore(): Observable<Boolean> {
+        return Observable.create {
+            try {
+                val installer = context.packageManager.getInstallerPackageName(context.packageName)
+                val isInstalledFromPlayStore =
+                    installer != null && installer.startsWith(GOOGLE_PLAY_STORE_INSTALLER)
+                // Emitting
+                it.onNext(isInstalledFromPlayStore)
+                // Completing
+                it.onComplete()
+            } catch (error: Exception) {
+                it.onError(error)
+            }
+        }
+    }
+
+    /**
+     *  Detect If Application Is Running On Emulator
+     *  Return True If Running On Emulator
+     *  Return False If Not Running On Emulator
+     */
+    @Suppress("unused")
+    fun isApplicationRunningOnEmulator(): Observable<Boolean> {
+        return Observable.create {
+            try {
+                // Emitting
+                it.onNext(
+                    (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
+                            || Build.FINGERPRINT.startsWith("generic")
+                            || Build.FINGERPRINT.startsWith("unknown")
+                            || Build.HARDWARE.contains("goldfish")
+                            || Build.HARDWARE.contains("ranchu")
+                            || Build.MODEL.contains("google_sdk")
+                            || Build.MODEL.contains("Emulator")
+                            || Build.MODEL.contains("Android SDK built for x86")
+                            || Build.MANUFACTURER.contains("Genymotion")
+                            || Build.PRODUCT.contains("sdk_google")
+                            || Build.PRODUCT.contains("google_sdk")
+                            || Build.PRODUCT.contains("sdk")
+                            || Build.PRODUCT.contains("sdk_x86")
+                            || Build.PRODUCT.contains("vbox86p")
+                            || Build.PRODUCT.contains("emulator")
+                            || Build.PRODUCT.contains("simulator")
+                )
+                // Completing
+                it.onComplete()
+            } catch (error: Exception) {
+                it.onError(error)
+            }
+        }
+    }
+
     companion object {
         const val DEBUG = "DEBUG"
         const val RELEASE = "RELEASE"
+        const val GOOGLE_PLAY_STORE_INSTALLER = "com.android.vending"
+        const val VALID_APPLICATION = 1
+        const val INVALID_APPLICATION = 2
+        const val UNABLE_TO_VERIFY_APPLICATION = 3
     }
 }
