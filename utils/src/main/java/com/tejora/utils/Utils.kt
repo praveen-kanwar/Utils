@@ -34,6 +34,15 @@ class Utils
 @Inject
 constructor(private val context: Context) {
 
+    private var enableLog = false
+
+    /* To Enable/Disable Logs */
+    @Suppress("unused")
+    fun enableLog(enableLog: Boolean) {
+        this.enableLog = enableLog
+    }
+
+
     /* To Hide Keyboard */
     @Suppress("unused")
     fun getMainApplicationContext(): Context {
@@ -162,27 +171,12 @@ constructor(private val context: Context) {
     }
 
     /**
-     *  Return True If Build Is [DEBUG] Type.
-     *  Return False If Build Is [RELEASE] Type.
+     *  Return True If Build Is [DEBUG] Type As In Debug It's Debuggable.
+     *  Return False If Build Is [RELEASE] Type As In Release It's Not Debuggable.
      */
+    @Suppress("unused")
     fun isApplicationDebuggable(): Boolean {
-        try {
-            // Get Package Name, Also Remove If uat or sandbox is appended.
-            val packageName = context.packageName
-                .replace(".uat", "", true)
-                .replace(".sandbox", "", true)
-                .plus(".BuildConfig")
-            val clazz = Class.forName(packageName)
-            val field = clazz.getField(DEBUG)
-            return field.get(null) != null
-        } catch (e: ClassNotFoundException) {
-            e.printStackTrace()
-        } catch (e: NoSuchFieldException) {
-            e.printStackTrace()
-        } catch (e: IllegalAccessException) {
-            e.printStackTrace()
-        }
-        return false
+        return enableLog
     }
 
     /**
