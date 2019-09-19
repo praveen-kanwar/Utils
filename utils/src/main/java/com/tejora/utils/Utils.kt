@@ -241,12 +241,12 @@ constructor(private val context: Context) {
 
     /**
      *  Detect App Signature
-     *  Return 1 If Genuine
-     *  Return 2 If Non-Genuine
-     *  Return 3 If Unable To Verify
+     *  Return true If Genuine
+     *  Return false If Non-Genuine
+     *  Return false If Unable To Verify
      */
     @Suppress("unused", "PackageManagerGetSignatures", "DEPRECATION")
-    fun isApplicationSignatureValid(actualSignature: String): Observable<Int> {
+    fun isApplicationSignatureValid(actualSignature: String): Observable<Boolean> {
         return Observable.create {
             try {
                 val packageInfo = context.packageManager.getPackageInfo(
@@ -258,25 +258,28 @@ constructor(private val context: Context) {
                     val md = MessageDigest.getInstance("SHA")
                     md.update(signatureBytes)
                     val currentSignature = Base64.encodeToString(md.digest(), Base64.DEFAULT)
+                    showLog(TAG, "Application Current Signature:-> $currentSignature")
+                    showLog(TAG, "Application Actual  Signature:-> $actualSignature")
                     //compare signatures
-                    if (actualSignature == currentSignature) {
+                    if (actualSignature.trim() == currentSignature.trim()) {
+                        showLog(TAG, "Signature Matched")
                         // Emitting
-                        it.onNext(VALID_APPLICATION)
+                        it.onNext(true)
                         // Completing
                         it.onComplete()
                     } else {
+                        showLog(TAG, "Signature Not Matched")
                         // Emitting
-                        it.onNext(INVALID_APPLICATION)
+                        it.onNext(false)
                         // Completing
                         it.onComplete()
                     }
-
                 }
             } catch (error: Exception) {
-                showLog(TAG, "Error Occurred While Checking Application Is Genuine Or Not.")
+                showLog(TAG, "Unable to verify application signature.")
                 //it.onError(error)
                 // Emitting
-                it.onNext(UNABLE_TO_VERIFY_APPLICATION)
+                it.onNext(false)
                 // Completing
                 it.onComplete()
             }
@@ -345,8 +348,5 @@ constructor(private val context: Context) {
         const val DEBUG = "DEBUG"
         const val RELEASE = "RELEASE"
         const val GOOGLE_PLAY_STORE_INSTALLER = "com.android.vending"
-        const val VALID_APPLICATION = 1
-        const val INVALID_APPLICATION = 2
-        const val UNABLE_TO_VERIFY_APPLICATION = 3
     }
 }
