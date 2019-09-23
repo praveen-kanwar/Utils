@@ -23,7 +23,7 @@ ext {
     libraryDescription = 'Tejora\'s Utility Library For Android'
     siteUrl = 'https://github.com/praveen-kanwar/Utils'
     gitUrl = 'https://github.com/praveen-kanwar/Utils.git'
-    libraryVersion = '1.0.20'
+    libraryVersion = '1.0.22'
     developerId = 'praveen-kanwar'
     developerName = 'Praveen Kanwar'
     developerEmail = 'praveen.kanwar@tejora.com'
@@ -35,8 +35,8 @@ ext {
 
 android {
     // Build Specifications
-    compileSdkVersion 28
-    buildToolsVersion '28.0.3'
+    compileSdkVersion 29
+    buildToolsVersion '29.0.2'
 
     // To Auto Increment VersionName & VersionCode of Library
     def versionPropsFile = file('version.properties')
@@ -62,7 +62,7 @@ android {
     // Application Specifications
     defaultConfig {
         minSdkVersion 21
-        targetSdkVersion 28
+        targetSdkVersion 29
         versionCode versionC
         versionName versionN
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'

@@ -4,7 +4,9 @@ import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
+import android.net.Network
 import android.os.Build
+import android.provider.Settings
 import android.util.Base64
 import android.util.Log
 import android.util.Patterns
@@ -23,18 +25,52 @@ import java.util.zip.ZipInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
-
-private val TAG = Utils::class.java.simpleName
-
 /**
  * Context Should Be Of Application For Correct & Optimal Performance
  */
+@Suppress("unused")
 @Singleton
 class Utils
 @Inject
-constructor(private val context: Context) {
+constructor(private val context: Context) : ConnectivityManager.NetworkCallback() {
 
     private var enableLog = false
+
+    private var isInternetAvailable = false
+
+    /*
+     *
+     */
+    override fun onLost(network: Network?) {
+        showLog(TAG, "Internet Connectivity Lost.")
+        isInternetAvailable = false
+        // Further Can Be Evaluated To Check If WiFi Lost Event
+    }
+
+    /*
+     *
+     */
+    override fun onUnavailable() {
+        showLog(TAG, "Internet Unavailable.")
+        isInternetAvailable = false
+    }
+
+    /*
+     *
+     */
+    override fun onLosing(network: Network?, maxMsToLive: Int) {
+        showLog(TAG, "Internet Connectivity Losing.")
+        isInternetAvailable = false
+    }
+
+    /*
+     *
+     */
+    override fun onAvailable(network: Network?) {
+        showLog(TAG, "Internet Available.")
+        isInternetAvailable = true
+        // Further Can Be Evaluated To Check If WiFi Available.
+    }
 
     /* To Enable/Disable Logs */
     @Suppress("unused")
@@ -43,7 +79,7 @@ constructor(private val context: Context) {
     }
 
 
-    /* To Hide Keyboard */
+    /* To Get Application Context */
     @Suppress("unused")
     fun getMainApplicationContext(): Context {
         return context
@@ -149,7 +185,28 @@ constructor(private val context: Context) {
         editText.setSelection(editText.text.toString().length)
     }
 
-    /**
+    /* To Get Application Context */
+    @Suppress("unused")
+    fun isAutoTimeEnabled(): Observable<Boolean> {
+        return Observable.create {
+            try {
+                // Emitting
+                it.onNext(
+                    (Settings.Global.getInt(
+                        context.contentResolver,
+                        Settings.Global.AUTO_TIME,
+                        0
+                    ) == 1)
+                )
+                // Completing
+                it.onComplete()
+            } catch (error: Exception) {
+                it.onError(error)
+            }
+        }
+    }
+
+    /*
      *  To Check Email Pattern
      */
     @Suppress("unused")
@@ -159,18 +216,16 @@ constructor(private val context: Context) {
             .matches()
     }
 
-    /**
+    /*
      *  To Check If Network Is Available or not
      */
     @Suppress("unused")
     fun isNetworkAvailable(): Boolean {
-        showLog(TAG, "isNetworkAvailable($context)")
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val networkInfo = cm.activeNetworkInfo
-        return networkInfo != null && networkInfo.isConnected
+        showLog(TAG, "isNetworkAvailable -> $isInternetAvailable")
+        return isInternetAvailable
     }
 
-    /**
+    /*
      *  Return True If Build Is [DEBUG] Type As In Debug It's Debuggable.
      *  Return False If Build Is [RELEASE] Type As In Release It's Not Debuggable.
      */
@@ -179,7 +234,7 @@ constructor(private val context: Context) {
         return enableLog
     }
 
-    /**
+    /*
      *  Return String Extracted From Zip File
      */
     @Suppress("unused")
@@ -198,8 +253,8 @@ constructor(private val context: Context) {
                     if (ze.isDirectory) {
                         newFile.mkdirs()
                     } else {
-                        File(newFile.parent).mkdirs()
-                        val fos = FileOutputStream(newFile)
+                        File(newFile.parent!!).mkdirs()
+                        val fos = FileOutputStream(newFile!!)
                         var len = zis.read(buffer)
                         while (len > 0) {
                             fos.write(buffer, 0, len)
@@ -222,7 +277,7 @@ constructor(private val context: Context) {
         }
     }
 
-    /**
+    /*
      *  Detect Device Is Rooted Or Not
      */
     @Suppress("unused")
@@ -239,7 +294,7 @@ constructor(private val context: Context) {
         }
     }
 
-    /**
+    /*
      *  Detect App Signature
      *  Return true If Genuine
      *  Return false If Non-Genuine
@@ -286,7 +341,7 @@ constructor(private val context: Context) {
         }
     }
 
-    /**
+    /*
      *  Detect If Application Is Installed Via PlayStore
      *  Return True If Installed Via PlayStore
      *  Return False If Installed Via Other Source
@@ -308,7 +363,7 @@ constructor(private val context: Context) {
         }
     }
 
-    /**
+    /*
      *  Detect If Application Is Running On Emulator
      *  Return True If Running On Emulator
      *  Return False If Not Running On Emulator
@@ -344,7 +399,9 @@ constructor(private val context: Context) {
         }
     }
 
+    @Suppress("unused")
     companion object {
+        const val TAG = "Utils"
         const val DEBUG = "DEBUG"
         const val RELEASE = "RELEASE"
         const val GOOGLE_PLAY_STORE_INSTALLER = "com.android.vending"
