@@ -1,5 +1,7 @@
 package com.tejora.utils
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
@@ -7,13 +9,16 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.os.Build
 import android.provider.Settings
+import android.telephony.TelephonyManager
 import android.util.Base64
 import android.util.Log
 import android.util.Patterns
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
+import androidx.core.app.ActivityCompat
 import com.scottyab.rootbeer.RootBeer
 import io.reactivex.Observable
 import io.reactivex.disposables.Disposable
@@ -39,7 +44,7 @@ constructor(private val context: Context) : ConnectivityManager.NetworkCallback(
     private var isInternetAvailable = false
 
     /*
-     *
+     * This Method Will Be Called When Network Connectivity Is Lost
      */
     override fun onLost(network: Network?) {
         showLog(TAG, "Internet Connectivity Lost.")
@@ -48,7 +53,7 @@ constructor(private val context: Context) : ConnectivityManager.NetworkCallback(
     }
 
     /*
-     *
+     * This Method Will Be Called When Network Connectivity Is Unavailable
      */
     override fun onUnavailable() {
         showLog(TAG, "Internet Unavailable.")
@@ -56,7 +61,7 @@ constructor(private val context: Context) : ConnectivityManager.NetworkCallback(
     }
 
     /*
-     *
+     * This Method Will Be Called When Network Connectivity Is Losing.
      */
     override fun onLosing(network: Network?, maxMsToLive: Int) {
         showLog(TAG, "Internet Connectivity Losing.")
@@ -64,7 +69,7 @@ constructor(private val context: Context) : ConnectivityManager.NetworkCallback(
     }
 
     /*
-     *
+     * This Method Will Be Called When Network Connectivity Is Available
      */
     override fun onAvailable(network: Network?) {
         showLog(TAG, "Internet Available.")
@@ -204,6 +209,85 @@ constructor(private val context: Context) : ConnectivityManager.NetworkCallback(
                 it.onError(error)
             }
         }
+    }
+
+    /*
+     * This Method Will Return Device International Mobile Equipment Identity.
+     */
+    fun getDeviceIMEI(): String {
+        val telephonyManager =
+            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            getDeviceIMEIPostOreo(telephonyManager)
+        } else {
+            getDeviceIMEIPreOreo(telephonyManager)
+        }
+    }
+
+    /*
+     * This Method Will Return Device International Mobile Equipment Identity.
+     */
+    @SuppressLint("HardwareIds")
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    fun getDeviceIMEIPostOreo(telephonyManager: TelephonyManager): String {
+        val deviceUniqueIdentifier = if (ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_PHONE_STATE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            when (telephonyManager.phoneCount) {
+                1 -> {
+                    if (telephonyManager.imei == null) {
+                        Settings.Secure.getString(
+                            context.contentResolver,
+                            Settings.Secure.ANDROID_ID
+                        )
+                    } else {
+                        telephonyManager.imei
+                    }
+                }
+                2 -> {
+                    if (telephonyManager.getImei(1) == null) {
+                        Settings.Secure.getString(
+                            context.contentResolver,
+                            Settings.Secure.ANDROID_ID
+                        )
+                    } else {
+                        telephonyManager.getImei(1)
+                    }
+                }
+                else -> {
+                    Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+                }
+            }
+        } else {
+            Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+        }
+        showLog(TAG, "Device Unique Identifier -> $deviceUniqueIdentifier")
+        return deviceUniqueIdentifier
+    }
+
+    /*
+     * This Method Will Return Device International Mobile Equipment Identity.
+     */
+    @Suppress("DEPRECATION", "HardwareIds")
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    fun getDeviceIMEIPreOreo(telephonyManager: TelephonyManager): String {
+        val deviceUniqueIdentifier = if (ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_PHONE_STATE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            if (telephonyManager.deviceId == null) {
+                Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+            } else {
+                telephonyManager.deviceId
+            }
+        } else {
+            Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+        }
+        showLog(TAG, "Device Unique Identifier -> $deviceUniqueIdentifier")
+        return deviceUniqueIdentifier
     }
 
     /*
