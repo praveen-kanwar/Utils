@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.tejora.utils
 
 import android.Manifest
@@ -9,6 +11,9 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.os.Build
 import android.provider.Settings
+import android.security.KeyPairGeneratorSpec
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
 import android.telephony.TelephonyManager
 import android.util.Base64
 import android.util.Log
@@ -24,11 +29,18 @@ import io.reactivex.Observable
 import io.reactivex.disposables.Disposable
 import java.io.File
 import java.io.FileOutputStream
-import java.security.MessageDigest
+import java.math.BigInteger
+import java.security.*
+import java.security.spec.RSAKeyGenParameterSpec
+import java.util.*
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
+import javax.crypto.Cipher
+import javax.crypto.NoSuchPaddingException
 import javax.inject.Inject
 import javax.inject.Singleton
+import javax.security.auth.x500.X500Principal
+import kotlin.math.abs
 
 /**
  * Context Should Be Of Application For Correct & Optimal Performance
@@ -233,7 +245,7 @@ constructor(private val context: Context) : ConnectivityManager.NetworkCallback(
         val deviceUniqueIdentifier = if (ActivityCompat.checkSelfPermission(
                 context,
                 Manifest.permission.READ_PHONE_STATE
-            ) != PackageManager.PERMISSION_GRANTED
+            ) == PackageManager.PERMISSION_GRANTED
         ) {
             when (telephonyManager.phoneCount) {
                 1 -> {
@@ -276,7 +288,7 @@ constructor(private val context: Context) : ConnectivityManager.NetworkCallback(
         val deviceUniqueIdentifier = if (ActivityCompat.checkSelfPermission(
                 context,
                 Manifest.permission.READ_PHONE_STATE
-            ) != PackageManager.PERMISSION_GRANTED
+            ) == PackageManager.PERMISSION_GRANTED
         ) {
             if (telephonyManager.deviceId == null) {
                 Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
@@ -483,11 +495,148 @@ constructor(private val context: Context) : ConnectivityManager.NetworkCallback(
         }
     }
 
+    fun encrypt(plainText: String): String {
+        showLog(TAG, "Encrypting $plainText")
+        try {
+            val publicKey = getSecuredUserPrivateKeyEntry()!!.certificate.publicKey
+            val cipher = getCipher()
+            cipher.init(Cipher.ENCRYPT_MODE, publicKey)
+            return Base64.encodeToString(cipher.doFinal(plainText.toByteArray()), Base64.NO_WRAP)
+        } catch (e: Exception) {
+            throw RuntimeException(e)
+        }
+
+    }
+
+    fun decrypt(cipherText: String): String {
+        showLog(TAG, "Decrypting $cipherText")
+        try {
+            val privateKey = getSecuredUserPrivateKeyEntry()!!.privateKey
+            val cipher = getCipher()
+            cipher.init(Cipher.DECRYPT_MODE, privateKey)
+            return String(cipher.doFinal(Base64.decode(cipherText, Base64.NO_WRAP)))
+        } catch (e: Exception) {
+            throw RuntimeException(e)
+        }
+
+    }
+
+    private fun getSecuredUserPrivateKeyEntry(): KeyStore.PrivateKeyEntry? {
+        try {
+            val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE_PROVIDER)
+            keyStore.load(null)
+            val entry = keyStore.getEntry(ANDROID_KEYSTORE_ALIAS, null)
+            if (entry == null) {
+                showLog(TAG, "No Key Found Under Alias -> $ANDROID_KEYSTORE_ALIAS")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    createKeysMarshmallow()
+                } else {
+                    createKeysPreMarshmallow(context)
+                }
+                return keyStore.getEntry(ANDROID_KEYSTORE_ALIAS, null) as KeyStore.PrivateKeyEntry?
+            }
+            if (entry !is KeyStore.PrivateKeyEntry) {
+                showLog(TAG, "Not An Instance Of A PrivateKeyEntry")
+                return null
+            }
+            return entry
+        } catch (e: Exception) {
+            showLog(TAG, e.message!!)
+            return null
+        }
+
+    }
+
+    @Throws(NoSuchPaddingException::class, NoSuchAlgorithmException::class)
+    private fun getCipher(): Cipher {
+        return Cipher.getInstance(
+            String.format(
+                "%s/%s/%s",
+                TYPE_RSA,
+                BLOCKING_MODE,
+                PADDING_TYPE
+            )
+        )
+    }
+
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    @Throws(
+        NoSuchProviderException::class,
+        NoSuchAlgorithmException::class,
+        InvalidAlgorithmParameterException::class
+    )
+    private fun createKeysPreMarshmallow(context: Context) {
+        val start = GregorianCalendar()
+        val end = GregorianCalendar()
+        end.add(Calendar.YEAR, 30)
+        val spec = KeyPairGeneratorSpec.Builder(context)
+            .setAlias(ANDROID_KEYSTORE_ALIAS)
+            .setSubject(X500Principal("CN=${ANDROID_KEYSTORE_ALIAS}"))
+            .setSerialNumber(BigInteger.valueOf(abs(ANDROID_KEYSTORE_ALIAS.hashCode()).toLong()))
+            // Date range of validity for the generated pair.
+            .setStartDate(start.time).setEndDate(end.time)
+            .build()
+
+        val userSessionKeyPairGenerator = KeyPairGenerator.getInstance(
+            TYPE_RSA,
+            ANDROID_KEYSTORE_PROVIDER
+        )
+        userSessionKeyPairGenerator.initialize(spec)
+        val userSessionKeyPair = userSessionKeyPairGenerator.generateKeyPair()
+        showLog(TAG, "User Session Public Key is: " + userSessionKeyPair.public.toString())
+    }
+
+    @RequiresApi(Build.VERSION_CODES.M)
+    private fun createKeysMarshmallow() {
+        try {
+            val keyPairGenerator = KeyPairGenerator.getInstance(
+                KeyProperties.KEY_ALGORITHM_RSA, ANDROID_KEYSTORE_PROVIDER
+            )
+            keyPairGenerator.initialize(
+                KeyGenParameterSpec.Builder(
+                    ANDROID_KEYSTORE_ALIAS,
+                    KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+                )
+                    .setAlgorithmParameterSpec(
+                        RSAKeyGenParameterSpec(
+                            1024,
+                            RSAKeyGenParameterSpec.F4
+                        )
+                    )
+                    .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
+                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
+                    .setDigests(
+                        KeyProperties.DIGEST_SHA256,
+                        KeyProperties.DIGEST_SHA384,
+                        KeyProperties.DIGEST_SHA512
+                    )
+                    .setUserAuthenticationRequired(false)
+                    .build()
+            )
+            val userSessionKeyPair = keyPairGenerator.generateKeyPair()
+            showLog(
+                TAG,
+                "User Session Public Key is: " + userSessionKeyPair.public.toString()
+            )
+        } catch (e: NoSuchProviderException) {
+            throw RuntimeException(e)
+        } catch (e: NoSuchAlgorithmException) {
+            throw RuntimeException(e)
+        } catch (e: InvalidAlgorithmParameterException) {
+            throw RuntimeException(e)
+        }
+    }
+
     @Suppress("unused")
     companion object {
         const val TAG = "Utils"
         const val DEBUG = "DEBUG"
         const val RELEASE = "RELEASE"
         const val GOOGLE_PLAY_STORE_INSTALLER = "com.android.vending"
+        private const val ANDROID_KEYSTORE_PROVIDER = "AndroidKeyStore"
+        private const val ANDROID_KEYSTORE_ALIAS = "PrAVeEnKaNwAr"
+        private const val TYPE_RSA = "RSA"
+        private const val PADDING_TYPE = "PKCS1Padding"
+        private const val BLOCKING_MODE = "NONE"
     }
 }
