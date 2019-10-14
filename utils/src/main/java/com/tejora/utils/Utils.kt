@@ -15,6 +15,7 @@ import android.security.KeyPairGeneratorSpec
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.telephony.TelephonyManager
+import android.text.TextUtils
 import android.util.Base64
 import android.util.Log
 import android.util.Patterns
@@ -37,6 +38,10 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import javax.crypto.Cipher
 import javax.crypto.NoSuchPaddingException
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.PBEKeySpec
+import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 import javax.inject.Singleton
 import javax.security.auth.x500.X500Principal
@@ -627,6 +632,144 @@ constructor(private val context: Context) : ConnectivityManager.NetworkCallback(
         }
     }
 
+    fun encryptClearText(clearText: String): String {
+        showLog(TAG, "Encrypt Clear Text -> $clearText")
+        val clearTextByteArray = clearText.toByteArray(Charsets.UTF_8)
+        showLog(TAG, "Encrypt Clear Text ByteArray -> ${clearTextByteArray.contentToString()}")
+        val clearTextEncodedByteArray = Base64.encode(clearTextByteArray, Base64.DEFAULT)
+        showLog(
+            TAG,
+            "Encrypt Clear Text Encoded ByteArray -> ${clearTextEncodedByteArray!!.contentToString()}"
+        )
+        val cipherTextByteArray = getClearTextEncryptionCipher().doFinal(clearTextEncodedByteArray)
+        showLog(
+            TAG,
+            "Encrypted Cipher Text ByteArray -> ${cipherTextByteArray!!.contentToString()}"
+        )
+        val cipherTextString = Base64.encodeToString(cipherTextByteArray, Base64.DEFAULT)
+        showLog(TAG, "Encrypted Cipher Text -> $cipherTextString")
+        return cipherTextString
+    }
+
+    fun decryptCipherText(cipherText: String): String {
+        showLog(TAG, "Decrypt Cipher Text -> $cipherText")
+        val cipherTextByteArray = Base64.decode(cipherText, Base64.DEFAULT)
+        showLog(TAG, "Decrypt Cipher Text ByteArray -> ${cipherTextByteArray!!.contentToString()}")
+        val clearTextEncodedByteArray = getCipherTextDecryptionCipher().doFinal(cipherTextByteArray)
+        showLog(
+            TAG,
+            "Decrypted Encoded Clear Text ByteArray -> ${clearTextEncodedByteArray!!.contentToString()}"
+        )
+        val clearTextByteArray = Base64.decode(clearTextEncodedByteArray, Base64.DEFAULT)
+        showLog(TAG, "Decrypted Clear Text ByteArray -> ${clearTextByteArray!!.contentToString()}")
+        val clearText = String(clearTextByteArray, Charsets.UTF_8)
+        showLog(TAG, "Decrypted Clear Text -> $clearText")
+        return clearText
+    }
+
+    private fun getClearTextEncryptionCipher(): Cipher {
+        val cipher = Cipher.getInstance(ENCRYPTION_TRANSFORMATION)
+        cipher.init(
+            Cipher.ENCRYPT_MODE,
+            getSecretKeySpec(),
+            IvParameterSpec(getInitializationVector())
+        )
+        return cipher
+    }
+
+    private fun getCipherTextDecryptionCipher(): Cipher {
+        val cipher = Cipher.getInstance(ENCRYPTION_TRANSFORMATION)
+        cipher.init(
+            Cipher.DECRYPT_MODE,
+            getSecretKeySpec(),
+            IvParameterSpec(getInitializationVector())
+        )
+        return cipher
+    }
+
+    private fun getSecretKeyFactory(): SecretKeyFactory {
+        return SecretKeyFactory.getInstance(ENCRYPTION_ALGORITHM_SECRET_KEY_FACTORY)
+    }
+
+    private fun getPBEKeySpec(): PBEKeySpec {
+        return PBEKeySpec(
+            ENCRYPTION_KEY.toCharArray(),
+            getSalt(),
+            ENCRYPTION_ITERATION_COUNT,
+            ENCRYPTION_KEY_LENGTH
+        )
+    }
+
+    private fun getSecretKeySpec(): SecretKeySpec {
+        return SecretKeySpec(
+            getSecretKeyFactory().generateSecret(getPBEKeySpec()).encoded,
+            ENCRYPTION_ALGORITHM_SECRET_KEY_SPEC
+        )
+    }
+
+    private fun getSalt(): ByteArray {
+        val saltString = context.getSharedPreferences(TAG, Context.MODE_PRIVATE)
+            .getString(ENCRYPTION_SALT_KEY, null)
+        showLog(TAG, "Retrieved Salt String -> $saltString")
+        return if (TextUtils.isEmpty(saltString)) {
+            saveSalt(generateSalt())
+        } else {
+            val salt = Base64.decode(saltString!!, Base64.DEFAULT)
+            showLog(TAG, "Retrieved Salt -> ${salt!!.contentToString()}")
+            salt
+        }
+    }
+
+    private fun saveSalt(saltByteArray: ByteArray): ByteArray {
+        val editor = context.getSharedPreferences(TAG, Context.MODE_PRIVATE).edit()
+        showLog(TAG, "Saving Salt -> ${saltByteArray.contentToString()}")
+        val saltString = Base64.encodeToString(saltByteArray, Base64.DEFAULT)
+        showLog(TAG, "Saving Salt String -> $saltString")
+        editor.putString(ENCRYPTION_SALT_KEY, saltString)
+        editor.apply()
+        return saltByteArray
+    }
+
+    private fun generateSalt(): ByteArray {
+        val random = SecureRandom()
+        val salt = ByteArray(ENCRYPTION_SALT_KEY_LENGTH)
+        random.nextBytes(salt)
+        showLog(TAG, "Generated Salt -> ${salt.contentToString()}")
+        return salt
+    }
+
+    private fun getInitializationVector(): ByteArray {
+        val initializationVectorString =
+            context.getSharedPreferences(TAG, Context.MODE_PRIVATE)
+                .getString(ENCRYPTION_INITIALIZATION_VECTOR_KEY, null)
+        showLog(TAG, "Retrieved IV String -> $initializationVectorString")
+        return if (TextUtils.isEmpty(initializationVectorString)) {
+            saveInitializationVector(generateInitializationVector())
+        } else {
+            val initializationVector = Base64.decode(initializationVectorString!!, Base64.DEFAULT)
+            showLog(TAG, "Retrieved IV -> ${initializationVector!!.contentToString()}")
+            initializationVector
+        }
+    }
+
+    private fun saveInitializationVector(initializationVectorByteArray: ByteArray): ByteArray {
+        val editor = context.getSharedPreferences(TAG, Context.MODE_PRIVATE).edit()
+        showLog(TAG, "Saving IV -> ${initializationVectorByteArray.contentToString()}")
+        val ivString = Base64.encodeToString(initializationVectorByteArray, Base64.DEFAULT)
+        showLog(TAG, "Saving IV String -> $ivString")
+        editor.putString(ENCRYPTION_INITIALIZATION_VECTOR_KEY, ivString)
+        editor.apply()
+        return initializationVectorByteArray
+    }
+
+    private fun generateInitializationVector(): ByteArray {
+        val random = SecureRandom()
+        val initializationVector = ByteArray(ENCRYPTION_INITIALIZATION_VECTOR_KEY_LENGTH)
+        random.nextBytes(initializationVector)
+        showLog(TAG, "Generated IV -> ${initializationVector.contentToString()}")
+        return initializationVector
+    }
+
     @Suppress("unused")
     companion object {
         const val TAG = "Utils"
@@ -638,5 +781,15 @@ constructor(private val context: Context) : ConnectivityManager.NetworkCallback(
         private const val TYPE_RSA = "RSA"
         private const val PADDING_TYPE = "PKCS1Padding"
         private const val BLOCKING_MODE = "NONE"
+        private const val ENCRYPTION_TRANSFORMATION = "AES/CBC/PKCS7Padding"
+        private const val ENCRYPTION_ALGORITHM_SECRET_KEY_FACTORY = "PBKDF2WithHmacSHA1"
+        private const val ENCRYPTION_ALGORITHM_SECRET_KEY_SPEC = "AES"
+        private const val ENCRYPTION_KEY_LENGTH = 256
+        private const val ENCRYPTION_KEY = "KaNwArPrAVeEn"
+        private const val ENCRYPTION_ITERATION_COUNT = 9833
+        private const val ENCRYPTION_SALT_KEY_LENGTH = 256
+        private const val ENCRYPTION_SALT_KEY = "ENCRYPTION_SALT"
+        private const val ENCRYPTION_INITIALIZATION_VECTOR_KEY_LENGTH = 16
+        private const val ENCRYPTION_INITIALIZATION_VECTOR_KEY = "ENCRYPTION_INITIALIZATION_VECTOR"
     }
 }
