@@ -389,6 +389,7 @@ constructor(
             activity.let { suppliedActivity ->
                 val alertDialog =
                     AlertDialog.Builder(suppliedActivity) // Create Alert Dialog Builder
+                alertDialog.setCancelable(false)
                 if (title != null) {
                     alertDialog.setTitle(title) // Set Title If Supplied
                 }
