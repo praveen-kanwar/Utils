@@ -11,7 +11,8 @@ ext {
     legacySupportVersion = '1.0.0'
     materialVersion = '1.0.0'
     rxJavaVersion = '2.2.7'
-    rootBeerVersion = "0.0.7"
+    rootBeerVersion = '0.0.7'
+    smsVerifyVersion = '0.3.2'
 
 
     /**
@@ -54,6 +55,7 @@ ext {
             kotlin   : "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}",
             rootBeer : "com.scottyab:rootbeer-lib:${rootBeerVersion}",
             rxJava   : "io.reactivex.rxjava2:rxjava:${rxJavaVersion}",
+            smsVerify: "com.github.stfalcon:smsverifycatcher:${smsVerifyVersion}",
     ]
 
     /**

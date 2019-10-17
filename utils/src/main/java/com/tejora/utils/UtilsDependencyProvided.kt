@@ -20,6 +20,7 @@ import java.math.BigInteger
 import java.security.*
 import java.security.spec.RSAKeyGenParameterSpec
 import java.util.*
+import java.util.regex.Pattern
 import javax.crypto.Cipher
 import javax.crypto.NoSuchPaddingException
 import javax.crypto.SecretKeyFactory
@@ -135,6 +136,18 @@ constructor(private val context: Context) {
             throw RuntimeException(e)
         }
 
+    }
+
+    /**
+     * Extract Six Digit OTP From Given String
+     * @return OTP Of Six Digit Extracted From Input [String] Of SMS.
+     */
+    fun extractSixDigitOTP(sms: String): String {
+        val otpPattern = Pattern.compile("^\\d+(?=\\sis)|(?<=is\\s)\\d+\\.?\$")
+        val otpMatcher = otpPattern.matcher(sms)
+        return if (otpMatcher.find()) {
+            ((otpMatcher.group(0)) ?: "")
+        } else ""
     }
 
     /**

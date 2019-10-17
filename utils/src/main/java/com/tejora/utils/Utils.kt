@@ -108,6 +108,11 @@ interface Utils {
     fun isValidEmail(email: String): Boolean
 
     /**
+     *  To Request User For Allowing To Read SMS
+     */
+    fun requestSMSPermission(requestCode: Int, permissions: Array<String>, grantResults: IntArray)
+
+    /**
      * To Display Dialog With User Provided Values.
      *
      * [TejoraBus].listen Return [Disposable]
@@ -139,6 +144,16 @@ interface Utils {
      * To Show Toast In Application
      */
     fun showToast(message: String)
+
+    /**
+     * To Start Reading SMS For OTP Detection
+     */
+    fun startReadingSMS(activity: Activity, contains: String)
+
+    /**
+     * To Stop Reading SMS For OTP Detection
+     */
+    fun stopReadingSMS()
 
     /**
      *  Unzip  Zipped File.

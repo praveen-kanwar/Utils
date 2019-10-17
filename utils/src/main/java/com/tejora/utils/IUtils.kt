@@ -18,6 +18,8 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import com.scottyab.rootbeer.RootBeer
+import com.stfalcon.smsverifycatcher.OnSmsCatchListener
+import com.stfalcon.smsverifycatcher.SmsVerifyCatcher
 import io.reactivex.Observable
 import io.reactivex.disposables.Disposable
 import java.io.File
@@ -91,6 +93,8 @@ constructor(
 
     // Flag Responsible For The Status Of Internet
     private var isInternetAvailable = false
+
+    private lateinit var smsVerifyCatcher: SmsVerifyCatcher
 
     /**
      *  Decrypt Supplied Cipher Text.
@@ -360,6 +364,19 @@ constructor(
     }
 
     /**
+     *  To Request User For Allowing To Read SMS
+     */
+    override fun requestSMSPermission(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        if (::smsVerifyCatcher.isInitialized) {
+            smsVerifyCatcher.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        }
+    }
+
+    /**
      * To Display Dialog With User Provided Values.
      *
      * [TejoraBus].listen Return [Disposable]
@@ -449,6 +466,50 @@ constructor(
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    /**
+     * To Start Reading SMS For OTP Detection
+     */
+    override fun startReadingSMS(activity: Activity, contains: String) {
+        smsVerifyCatcher = SmsVerifyCatcher(activity, OnSmsCatchListener { message ->
+            showLog(TAG, "SMS received: $message")
+            if (message.contains(contains)) {
+                showLog(TAG, "Message received : $message")
+                val otp = utilsDependencyProvided.extractSixDigitOTP(message).trim()
+                showLog(TAG, "Received OTP : $otp")
+                if (otp.length > 3) {
+                    val otpArray = otp.toCharArray()
+                    var isValidOTP = true
+                    for (singleDigit in otpArray) {
+                        try {
+                            showLog(TAG, "OTP single digit : $singleDigit")
+                            Integer.parseInt(singleDigit.toString())
+                        } catch (e: Exception) {
+                            isValidOTP = false
+                            showLog(TAG, "Exception in OTP ${e.message}")
+                        }
+                    }
+                    if (isValidOTP) {
+                        TejoraBus.publish(SMSReceived(message, otp))
+                    }
+                } else {
+                    showLog(TAG, "Received Invalid OTP : $otp")
+                }
+            } else {
+                showLog(TAG, "Other message received : $message")
+            }
+        })
+        smsVerifyCatcher.onStart()
+    }
+
+    /**
+     * To Stop Reading SMS For OTP Detection
+     */
+    override fun stopReadingSMS() {
+        if (::smsVerifyCatcher.isInitialized) {
+            smsVerifyCatcher.onStop()
         }
     }
 

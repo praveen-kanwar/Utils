@@ -23,7 +23,7 @@ ext {
     libraryDescription = 'Tejora\'s Utility Library For Android'
     siteUrl = 'https://github.com/praveen-kanwar/Utils'
     gitUrl = 'https://github.com/praveen-kanwar/Utils.git'
-    libraryVersion = '1.0.35'
+    libraryVersion = '1.0.37'
     developerId = 'praveen-kanwar'
     developerName = 'Praveen Kanwar'
     developerEmail = 'praveen.kanwar@tejora.com'
@@ -83,6 +83,11 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
+    // Specify Kotlin JVM Target
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8
+    }
+
     lintOptions {
         checkAllWarnings true
         warningsAsErrors true
@@ -93,7 +98,6 @@ android {
 dependencies {
     // Reference To BuildSystem Package
     def utilsDependencies = rootProject.ext.utilsDependencies
-    def utilsTestDependencies = rootProject.ext.utilsTestDependencies
 
     // Basic Dependencies
     implementation fileTree(include: ['*.jar'], dir: 'libs')
@@ -105,14 +109,7 @@ dependencies {
     implementation utilsDependencies.kotlin
     implementation utilsDependencies.rootBeer
     implementation utilsDependencies.rxJava
-
-    // Android UI Testing Libraries
-    testImplementation utilsTestDependencies.junit
-
-    // Android UI Testing Libraries
-    androidTestImplementation utilsTestDependencies.androidXJunit
-    androidTestImplementation utilsTestDependencies.espresso
-    androidTestImplementation utilsTestDependencies.runner
+    implementation utilsDependencies.smsVerify
 }
 
 apply from: 'install.gradle'
