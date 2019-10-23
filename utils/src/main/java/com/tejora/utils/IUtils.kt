@@ -16,12 +16,10 @@ import android.util.Patterns
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import com.scottyab.rootbeer.RootBeer
 import com.stfalcon.smsverifycatcher.OnSmsCatchListener
 import com.stfalcon.smsverifycatcher.SmsVerifyCatcher
 import io.reactivex.Observable
-import io.reactivex.disposables.Disposable
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
@@ -94,7 +92,7 @@ constructor(
     // Flag Responsible For The Status Of Internet
     private var isInternetAvailable = false
 
-    private lateinit var smsVerifyCatcher: SmsVerifyCatcher
+    private var smsVerifyCatcher: SmsVerifyCatcher? = null
 
     /**
      *  Decrypt Supplied Cipher Text.
@@ -371,64 +369,17 @@ constructor(
         permissions: Array<String>,
         grantResults: IntArray
     ) {
-        if (::smsVerifyCatcher.isInitialized) {
-            smsVerifyCatcher.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        }
-    }
-
-    /**
-     * To Display Dialog With User Provided Values.
-     *
-     * [TejoraBus].listen Return [Disposable]
-     * [Disposable] = [TejoraBus].listen([TejoraDialogResponse]::class.java).subscribe { response -> //Code }
-     * Don't Forget To Dispose Disposable On onPause Method
-     * if (![Disposable].isDisposed) [Disposable].dispose()
-     */
-    override fun showDialog(
-        activity: Activity, // As Dialog Can Be Displayed Over Activity Hence Activity Context Or Activity Is Required.
-        pageName: String, //Fragment/Activity Where Dialog Is Displayed
-        reasonForDisplay: String, //Reason To Display Dialog.
-        title: String?, // Dialog Title
-        message: String, //Message To Be Displayed..
-        cancelMessage: String?, // Cancel/Negative Button Text
-        okayMessage: String // Okay/Positive Button Text
-    ) {
-        try {
-            // Creating Default Response
-            val response = TejoraDialogResponse(
-                pageName,
-                reasonForDisplay,
-                title,
-                message,
-                cancelMessage,
-                okayMessage
-            )
-            activity.let { suppliedActivity ->
-                val alertDialog =
-                    AlertDialog.Builder(suppliedActivity) // Create Alert Dialog Builder
-                alertDialog.setCancelable(false)
-                if (title != null) {
-                    alertDialog.setTitle(title) // Set Title If Supplied
-                }
-                alertDialog.setMessage(message) // Set Message
-                // Set Positive Button
-                alertDialog.setPositiveButton(okayMessage) { dialog, _ ->
-                    response.userOpted = okayMessage // Set User Opted Acceptance
-                    TejoraBus.publish(response) // Publish User Selection
-                    dialog.dismiss() // Dismiss Dialog
-                }
-                // Set Negative Button If Supplied/Required As Per User Requirement
-                if (cancelMessage != null) {
-                    alertDialog.setNegativeButton(cancelMessage) { dialog, _ ->
-                        response.userOpted = cancelMessage // Set User Opted For Rejection
-                        TejoraBus.publish(response) // Publish User Selection
-                        dialog.dismiss() // Dismiss Dialog
-                    }
-                }
-                alertDialog.create().show() // Display Dialog
+        if (smsVerifyCatcher != null) {
+            try {
+                showLog(TAG, "requestSMSPermission")
+                smsVerifyCatcher!!.onRequestPermissionsResult(
+                    requestCode,
+                    permissions,
+                    grantResults
+                )
+            } catch (exception: Exception) {
+                showLog(TAG, "Exception requestSMSPermission -> ${exception.message}")
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 
@@ -473,7 +424,8 @@ constructor(
      * To Start Reading SMS For OTP Detection
      */
     override fun startReadingSMS(activity: Activity, contains: String) {
-        smsVerifyCatcher = SmsVerifyCatcher(activity, OnSmsCatchListener { message ->
+        showLog(TAG, "Start Reading Messages")
+        SmsVerifyCatcher(activity, OnSmsCatchListener { message ->
             showLog(TAG, "SMS received: $message")
             if (message.contains(contains)) {
                 showLog(TAG, "Message received : $message")
@@ -500,16 +452,22 @@ constructor(
             } else {
                 showLog(TAG, "Other message received : $message")
             }
-        })
-        smsVerifyCatcher.onStart()
+        }).apply {
+            smsVerifyCatcher = this
+            this.onStart()
+        }
     }
 
     /**
      * To Stop Reading SMS For OTP Detection
      */
     override fun stopReadingSMS() {
-        if (::smsVerifyCatcher.isInitialized) {
-            smsVerifyCatcher.onStop()
+        showLog(TAG, "Stop Reading Messages")
+        if (smsVerifyCatcher != null) {
+            smsVerifyCatcher.apply {
+                this!!.onStop()
+                smsVerifyCatcher = null
+            }
         }
     }
 

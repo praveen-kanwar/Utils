@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.widget.EditText
 import io.reactivex.Observable
-import io.reactivex.disposables.Disposable
 
 /**
  * Context Should Be Of Application For Correct & Optimal Performance
@@ -111,24 +110,6 @@ interface Utils {
      *  To Request User For Allowing To Read SMS
      */
     fun requestSMSPermission(requestCode: Int, permissions: Array<String>, grantResults: IntArray)
-
-    /**
-     * To Display Dialog With User Provided Values.
-     *
-     * [TejoraBus].listen Return [Disposable]
-     * [Disposable] = [TejoraBus].listen([TejoraDialogResponse]::class.java).subscribe { response -> //Code }
-     * Don't Forget To Dispose Disposable On onPause Method
-     * if (![Disposable].isDisposed) [Disposable].dispose()
-     */
-    fun showDialog(
-        activity: Activity, // As Dialog Can Be Displayed Over Activity Hence Activity Context Or Activity Is Required.
-        pageName: String = "", //Fragment/Activity Where Dialog Is Displayed
-        reasonForDisplay: String = "", //Reason To Display Dialog.
-        title: String? = null, // Dialog Title
-        message: String = "", //Message To Be Displayed..
-        cancelMessage: String? = null, // Cancel/Negative Button Text
-        okayMessage: String = "Okay" // Okay/Positive Button Text
-    )
 
     /**
      * To Show Keyboard On Provided EditText
