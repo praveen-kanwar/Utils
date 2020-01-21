@@ -119,7 +119,7 @@ interface Utils {
     /**
      * To Show Logs In Dalvik Debug Monitor Service.
      */
-    fun showLog(TAG: String, message: String)
+    fun showLog(tag: String, message: String)
 
     /**
      * To Show Toast In Application

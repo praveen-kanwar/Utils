@@ -16,6 +16,10 @@ import android.text.TextUtils
 import android.util.Base64
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
+import com.google.gson.Gson
+import com.tejora.utils.bean.SafetyNetResponse
+import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.math.BigInteger
 import java.security.*
 import java.security.spec.RSAKeyGenParameterSpec
@@ -35,7 +39,7 @@ import kotlin.math.abs
 @Singleton
 class UtilsDependencyProvided
 @Inject
-constructor(private val context: Context) {
+constructor(private val context: Context, private val gson: Gson) {
 
     /**
      * Create Key In KeyStore For OS [Build.VERSION_CODES.M] & Above.
@@ -332,6 +336,26 @@ constructor(private val context: Context) {
     }
 
     /**
+     * Generates a 16-byte nonce with additional data.
+     * The nonce should also include additional information, such as a user id or any other details
+     * you wish to bind to this attestation. Here you can provide a String that is included in the
+     * nonce after 24 random bytes. During verification, extract this data again and check it
+     * against the request that was made with this nonce.
+     */
+    fun getRequestNonce(data: String): ByteArray? {
+        val byteStream = ByteArrayOutputStream()
+        val bytes = ByteArray(24)
+        SecureRandom().nextBytes(bytes)
+        try {
+            byteStream.write(bytes)
+            byteStream.write(data.toByteArray())
+        } catch (e: IOException) {
+            return null
+        }
+        return byteStream.toByteArray()
+    }
+
+    /**
      * Get Password Based Encryption Key Provider.
      * @return [PBEKeySpec] Which Is Required For Encryption Of Clear Text.
      */
@@ -401,6 +425,19 @@ constructor(private val context: Context) {
             return entry
         } catch (e: Exception) {
             return null
+        }
+    }
+
+    /**
+     * Parse SafetyNet Response
+     * Can Be Retrieved Later via [fetchDatabaseEncryptionKey]
+     */
+    fun parseJsonWebSignature(jwsResult: String?): SafetyNetResponse? {
+        val jwtParts = jwsResult?.split("\\.".toRegex())?.dropLastWhile { it.isEmpty() }
+        return jwtParts?.takeIf { it.size >= 2 }?.let {
+            // We're only interested in the body/payload
+            val decodedPayload = String(Base64.decode(it[1], Base64.DEFAULT))
+            gson.fromJson(decodedPayload, SafetyNetResponse::class.java)
         }
     }
 

@@ -23,7 +23,7 @@ ext {
     libraryDescription = 'Tejora\'s Utility Library For Android'
     siteUrl = 'https://github.com/praveen-kanwar/Utils'
     gitUrl = 'https://github.com/praveen-kanwar/Utils.git'
-    libraryVersion = '1.0.40'
+    libraryVersion = '1.0.43'
     developerId = 'praveen-kanwar'
     developerName = 'Praveen Kanwar'
     developerEmail = 'praveen.kanwar@tejora.com'
@@ -105,10 +105,12 @@ dependencies {
     // All Maven & Google Repository Dependencies
     implementation utilsDependencies.appCompat
     implementation utilsDependencies.coreKTX
+    implementation utilsDependencies.gson
     implementation utilsDependencies.javaX
     implementation utilsDependencies.kotlin
     implementation utilsDependencies.rootBeer
     implementation utilsDependencies.rxJava
+    implementation utilsDependencies.safteyNet
     implementation utilsDependencies.smsVerify
 }
 

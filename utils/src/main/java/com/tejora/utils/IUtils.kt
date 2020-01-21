@@ -16,6 +16,10 @@ import android.util.Patterns
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
+import com.google.android.gms.safetynet.SafetyNet
+import com.google.gson.Gson
 import com.scottyab.rootbeer.RootBeer
 import com.stfalcon.smsverifycatcher.OnSmsCatchListener
 import com.stfalcon.smsverifycatcher.SmsVerifyCatcher
@@ -37,7 +41,8 @@ class IUtils
 @Inject
 constructor(
     private val context: Context,
-    private val utilsDependencyProvided: UtilsDependencyProvided
+    private val utilsDependencyProvided: UtilsDependencyProvided,
+    private val gson: Gson
 ) : Utils {
 
     init {
@@ -268,8 +273,6 @@ constructor(
                 }
             } catch (error: Exception) {
                 showLog(TAG, "Unable to verify application signature.")
-                //it.onError(error)
-                // Emitting
                 it.onNext(false)
                 // Completing
                 it.onComplete()
@@ -307,14 +310,85 @@ constructor(
      *  @return False if Device Isn't Rooted
      */
     override fun isDeviceRooted(): Observable<Boolean> {
-        return Observable.create {
+        return Observable.create { isDeviceRooted ->
             try {
+                val rootBeerResponse = RootBeer(context).isRootedWithoutBusyBoxCheck
+                val safetyNetResponse = (Observable.create<Boolean> { safetyNetResponse ->
+                    try {
+                        if (GoogleApiAvailability
+                                .getInstance()
+                                .isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
+                        ) {
+                            // The SafetyNet Attestation API is available.
+                            showLog(TAG, "Sending SafetyNet API request.")
+                            /*
+                            Create a nonce for this request.
+                            The nonce is returned as part of the response from the
+                            SafetyNet API. Here we append the string to a number of random bytes to ensure it larger
+                            than the minimum 16 bytes required.
+                            Read out this value and verify it against the original request to ensure the
+                            response is correct and genuine.
+                            NOTE: A nonce must only be used once and a different nonce should be used for each request.
+                            As a more secure option, you can obtain a nonce from your own server using a secure
+                            connection. Here in this sample, we generate a String and append random bytes, which is not
+                            very secure. Follow the tips on the Security Tips page for more information:
+                            https://developer.android.com/training/articles/security-tips.html#Crypto
+                             */
+                            val nonceData = "Safety Net : " + System.currentTimeMillis()
+                            val nonce = utilsDependencyProvided.getRequestNonce(nonceData)!!
+
+                            SafetyNet.getClient(context).attest(nonce, SAFETY_NET_API_KEY)
+                                .addOnSuccessListener { attestationResponse ->
+                                    /*
+                                     * Successfully communicated with SafetyNet API.
+                                     * Use result.getJwsResult() to get the signed result data. See the server
+                                     * component of this sample for details on how to verify and parse this result.
+                                     */
+                                    val mResult = attestationResponse.jwsResult
+                                    showLog(TAG, "Success! SafetyNet result:\n$mResult\n")
+                                    val response =
+                                        utilsDependencyProvided.parseJsonWebSignature(mResult)
+                                    showLog(
+                                        TAG,
+                                        "Success! SafetyNet Parsed result: ${gson.toJson(response)}"
+                                    )
+                                    // Emitting Response Of SafetyNet Negating Value As True Indicate Device Isn't Rooted.
+                                    safetyNetResponse.onNext(!response!!.basicIntegrity)
+                                    // Completing
+                                    safetyNetResponse.onComplete()
+                                }
+                                .addOnFailureListener { exception ->
+                                    // An error occurred while communicating with the service.
+                                    showLog(TAG, "Error -> ${exception.message}")
+                                    // Emitting True As Unable To Verify Device Integrity
+                                    safetyNetResponse.onNext(true)
+                                    // Completing
+                                    safetyNetResponse.onComplete()
+
+                                }
+                        } else {
+                            // Emitting True As Unable To Verify Device Integrity
+                            safetyNetResponse.onNext(true)
+                            // Completing
+                            safetyNetResponse.onComplete()
+                        }
+                    } catch (error: Exception) {
+                        // An error occurred while communicating with the service.
+                        showLog(TAG, "Error -> ${error.message}")
+                        // Emitting True As Unable To Verify Device Integrity
+                        safetyNetResponse.onNext(true)
+                        // Completing
+                        safetyNetResponse.onComplete()
+                    }
+                }).blockingSingle()
                 // Emitting
-                it.onNext(RootBeer(context).isRootedWithoutBusyBoxCheck)
+                isDeviceRooted.onNext((rootBeerResponse && safetyNetResponse))
                 // Completing
-                it.onComplete()
+                isDeviceRooted.onComplete()
             } catch (error: Exception) {
-                it.onError(error)
+                // An error occurred while verifying device integrity.
+                showLog(TAG, "Error -> ${error.message}")
+                isDeviceRooted.onError(error)
             }
         }
     }
@@ -398,10 +472,10 @@ constructor(
     /**
      * To Show Logs In Dalvik Debug Monitor Service.
      */
-    override fun showLog(TAG: String, message: String) {
+    override fun showLog(tag: String, message: String) {
         try {
             if (isApplicationDebuggable()) {
-                Log.e(TAG, message)
+                Log.e(tag, message)
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -427,11 +501,11 @@ constructor(
         showLog(TAG, "Start Reading Messages")
         SmsVerifyCatcher(activity, OnSmsCatchListener { message ->
             showLog(TAG, "SMS received: $message")
-            if (message.contains(contains)) {
-                showLog(TAG, "Message received : $message")
-                val otp = utilsDependencyProvided.extractSixDigitOTP(message).trim()
-                showLog(TAG, "Received OTP : $otp")
-                if (otp.length > 3) {
+            when {
+                message.contains(contains) -> {
+                    showLog(TAG, "Message received : $message")
+                    val otp = utilsDependencyProvided.extractSixDigitOTP(message).trim()
+                    showLog(TAG, "Received OTP : $otp")
                     val otpArray = otp.toCharArray()
                     var isValidOTP = true
                     for (singleDigit in otpArray) {
@@ -446,11 +520,10 @@ constructor(
                     if (isValidOTP) {
                         TejoraBus.publish(SMSReceived(message, otp))
                     }
-                } else {
-                    showLog(TAG, "Received Invalid OTP : $otp")
                 }
-            } else {
-                showLog(TAG, "Other message received : $message")
+                else -> {
+                    showLog(TAG, "Invalid OTP")
+                }
             }
         }).apply {
             smsVerifyCatcher = this
@@ -521,5 +594,6 @@ constructor(
     companion object {
         const val TAG = "Utils"
         const val GOOGLE_PLAY_STORE_INSTALLER = "com.android.vending"
+        private const val SAFETY_NET_API_KEY = "AIzaSyA6TQiStAhHjd-0GqJnjjkEGKS-7DCyxFI"
     }
 }
