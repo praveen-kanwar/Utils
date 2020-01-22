@@ -27,6 +27,8 @@ import io.reactivex.Observable
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import javax.inject.Inject
@@ -90,6 +92,9 @@ constructor(
                 }
             )
     }
+
+    // Create a DateFormatter object for displaying date in specified format.
+    private var dateFormatter = SimpleDateFormat(DEFAULT_DATE_FORMAT, Locale.ENGLISH)
 
     // Flag Responsible For Enable/Disable Of Log Printing In DDMS
     private var enableLog = false
@@ -305,7 +310,7 @@ constructor(
     }
 
     /**
-     *  Detect Device Is Rooted Or Not
+     *  Detect Device Is Rooted Or Not With RootBeer & Google SafetyNet
      *  @return True If Device Is Rooted
      *  @return False if Device Isn't Rooted
      */
@@ -313,82 +318,100 @@ constructor(
         return Observable.create { isDeviceRooted ->
             try {
                 val rootBeerResponse = RootBeer(context).isRootedWithoutBusyBoxCheck
-                val safetyNetResponse = (Observable.create<Boolean> { safetyNetResponse ->
-                    try {
-                        if (GoogleApiAvailability
-                                .getInstance()
-                                .isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
-                        ) {
-                            // The SafetyNet Attestation API is available.
-                            showLog(TAG, "Sending SafetyNet API request.")
-                            /*
-                            Create a nonce for this request.
-                            The nonce is returned as part of the response from the
-                            SafetyNet API. Here we append the string to a number of random bytes to ensure it larger
-                            than the minimum 16 bytes required.
-                            Read out this value and verify it against the original request to ensure the
-                            response is correct and genuine.
-                            NOTE: A nonce must only be used once and a different nonce should be used for each request.
-                            As a more secure option, you can obtain a nonce from your own server using a secure
-                            connection. Here in this sample, we generate a String and append random bytes, which is not
-                            very secure. Follow the tips on the Security Tips page for more information:
-                            https://developer.android.com/training/articles/security-tips.html#Crypto
-                             */
-                            val nonceData = "Safety Net : " + System.currentTimeMillis()
-                            val nonce = utilsDependencyProvided.getRequestNonce(nonceData)!!
-
-                            SafetyNet.getClient(context).attest(nonce, SAFETY_NET_API_KEY)
-                                .addOnSuccessListener { attestationResponse ->
-                                    /*
-                                     * Successfully communicated with SafetyNet API.
-                                     * Use result.getJwsResult() to get the signed result data. See the server
-                                     * component of this sample for details on how to verify and parse this result.
-                                     */
-                                    val mResult = attestationResponse.jwsResult
-                                    showLog(TAG, "Success! SafetyNet result:\n$mResult\n")
-                                    val response =
-                                        utilsDependencyProvided.parseJsonWebSignature(mResult)
-                                    showLog(
-                                        TAG,
-                                        "Success! SafetyNet Parsed result: ${gson.toJson(response)}"
-                                    )
-                                    // Emitting Response Of SafetyNet Negating Value As True Indicate Device Isn't Rooted.
-                                    safetyNetResponse.onNext(!response!!.basicIntegrity)
-                                    // Completing
-                                    safetyNetResponse.onComplete()
-                                }
-                                .addOnFailureListener { exception ->
-                                    // An error occurred while communicating with the service.
-                                    showLog(TAG, "Error -> ${exception.message}")
-                                    // Emitting True As Unable To Verify Device Integrity
-                                    safetyNetResponse.onNext(true)
-                                    // Completing
-                                    safetyNetResponse.onComplete()
-
-                                }
-                        } else {
-                            // Emitting True As Unable To Verify Device Integrity
-                            safetyNetResponse.onNext(true)
-                            // Completing
-                            safetyNetResponse.onComplete()
-                        }
-                    } catch (error: Exception) {
-                        // An error occurred while communicating with the service.
-                        showLog(TAG, "Error -> ${error.message}")
-                        // Emitting True As Unable To Verify Device Integrity
-                        safetyNetResponse.onNext(true)
-                        // Completing
-                        safetyNetResponse.onComplete()
-                    }
-                }).blockingSingle()
-                // Emitting
-                isDeviceRooted.onNext((rootBeerResponse && safetyNetResponse))
+                if (rootBeerResponse) {
+                    // If Device Is Found To Be Rooted With RootBeer Library
+                    isDeviceRooted.onNext(rootBeerResponse)
+                } else {
+                    // If Device Is Found Not Rooted With RootBeer Library Check With Google SafetyNet
+                    isDeviceRooted.onNext(isDeviceRootedWithSafetyNet().blockingSingle())
+                }
                 // Completing
                 isDeviceRooted.onComplete()
             } catch (error: Exception) {
                 // An error occurred while verifying device integrity.
                 showLog(TAG, "Error -> ${error.message}")
                 isDeviceRooted.onError(error)
+            }
+        }
+    }
+
+    /**
+     *  Detect Device Is Rooted Or Not With Google SafetyNet
+     *  @return True If Device Is Rooted
+     *  @return False if Device Isn't Rooted
+     */
+    override fun isDeviceRootedWithSafetyNet(): Observable<Boolean> {
+        return Observable.create { isDeviceRooted ->
+            try {
+                if (GoogleApiAvailability
+                        .getInstance()
+                        .isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
+                ) {
+                    // The SafetyNet Attestation API is available.
+                    showLog(TAG, "Sending SafetyNet API request.")
+                    /*
+                    Create a nonce for this request.
+                    The nonce is returned as part of the response from the
+                    SafetyNet API. Here we append the string to a number of random bytes to ensure it larger
+                    than the minimum 16 bytes required.
+                    Read out this value and verify it against the original request to ensure the
+                    response is correct and genuine.
+                    NOTE: A nonce must only be used once and a different nonce should be used for each request.
+                    As a more secure option, you can obtain a nonce from your own server using a secure
+                    connection. Here in this sample, we generate a String and append random bytes, which is not
+                    very secure. Follow the tips on the Security Tips page for more information:
+                    https://developer.android.com/training/articles/security-tips.html#Crypto
+                     */
+                    val nonceData = "Safety Net : " + System.currentTimeMillis()
+                    val nonce = utilsDependencyProvided.getRequestNonce(nonceData)!!
+
+                    SafetyNet.getClient(context).attest(nonce, SAFETY_NET_API_KEY)
+                        .addOnSuccessListener { attestationResponse ->
+                            /*
+                             * Successfully communicated with SafetyNet API.
+                             * Use result.getJwsResult() to get the signed result data. See the server
+                             * component of this sample for details on how to verify and parse this result.
+                             */
+                            val mResult = attestationResponse.jwsResult
+                            showLog(TAG, "Success! SafetyNet result:\n$mResult\n")
+                            val response =
+                                utilsDependencyProvided.parseJsonWebSignature(mResult)
+                            showLog(
+                                TAG,
+                                "Success! SafetyNet Parsed result: ${gson.toJson(response)}"
+                            )
+                            // Emitting Response Of SafetyNet Negating Value As True Indicate Device Isn't Rooted.
+                            isDeviceRooted.onNext(!response!!.basicIntegrity)
+                            // Completing
+                            isDeviceRooted.onComplete()
+                        }
+                        .addOnFailureListener { exception ->
+                            // An error occurred while communicating with the service.
+                            showLog(
+                                TAG,
+                                "Failed To Check With Google SafetyNet -> ${exception.message}"
+                            )
+                            // Emitting True As Unable To Verify Device Integrity
+                            isDeviceRooted.onNext(true)
+                            // Completing
+                            isDeviceRooted.onComplete()
+
+                        }
+                } else {
+                    // SafetyNet Attestation API isn't available.
+                    showLog(TAG, "SafetyNet Attestation API isn't available.")
+                    // Emitting True As Unable To Verify Device Integrity
+                    isDeviceRooted.onNext(true)
+                    // Completing
+                    isDeviceRooted.onComplete()
+                }
+            } catch (error: Exception) {
+                // Error Occurred While Verifying Device Integrity
+                showLog(TAG, "Error Occurred While Verifying Device Integrity -> ${error.message}")
+                // Emitting True As Unable To Verify Device Integrity Due To Error
+                isDeviceRooted.onNext(true)
+                // Completing
+                isDeviceRooted.onComplete()
             }
         }
     }
@@ -433,6 +456,17 @@ constructor(
         showLog(TAG, "isValidEmail($email)")
         return Patterns.EMAIL_ADDRESS.matcher(email)
             .matches()
+    }
+
+    /**
+     *  Parse Date Provided In Millis Into Human Readable Form.
+     *  @return Clear Text Readable By Human.
+     */
+    override fun parseDate(timeInMillis: Long): String {
+        showLog(TAG, "Parsing -> $timeInMillis")
+        val dateInText = dateFormatter.format(timeInMillis)
+        showLog(TAG, "Parsed -> $dateInText")
+        return dateInText
     }
 
     /**
@@ -592,8 +626,10 @@ constructor(
      * Common [String] Keys Used In This Class.
      */
     companion object {
-        const val TAG = "Utils"
-        const val GOOGLE_PLAY_STORE_INSTALLER = "com.android.vending"
+        private const val TAG = "IUtils"
+        private const val DEFAULT_DATE_FORMAT = "yyyy MMM dd"
+        private const val LOGOUT_CONSENT = "LOGOUT"
+        private const val GOOGLE_PLAY_STORE_INSTALLER = "com.android.vending"
         private const val SAFETY_NET_API_KEY = "AIzaSyA6TQiStAhHjd-0GqJnjjkEGKS-7DCyxFI"
     }
 }

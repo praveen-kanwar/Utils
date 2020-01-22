@@ -86,6 +86,13 @@ interface Utils {
     fun isDeviceRooted(): Observable<Boolean>
 
     /**
+     *  Detect Device Is Rooted Or Not With Google SafetyNet
+     *  @return True If Device Is Rooted
+     *  @return False if Device Isn't Rooted
+     */
+    fun isDeviceRootedWithSafetyNet(): Observable<Boolean>
+
+    /**
      *  Detect If Application Is Installed Via PlayStore
      *  @return True If Installed Via PlayStore
      *  @return False If Installed Via Other Source
@@ -105,6 +112,12 @@ interface Utils {
      *  @return False If Invalid
      */
     fun isValidEmail(email: String): Boolean
+
+    /**
+     * Parse Date Provided In Millis Into Human Readable Form
+     * @return Human Readable Date
+     */
+    fun parseDate(timeInMillis: Long): String
 
     /**
      *  To Request User For Allowing To Read SMS
