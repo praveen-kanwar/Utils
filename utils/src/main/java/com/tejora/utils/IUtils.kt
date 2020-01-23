@@ -492,6 +492,33 @@ constructor(
     }
 
     /**
+     * To Retrieve Secured Value Stored In SharedPreference Against A Key.
+     *
+     * @return Readable Value
+     */
+    override fun retrieveSecuredValue(key: String): String? {
+        val storedSecuredValue = context
+            .getSharedPreferences(TAG, Context.MODE_PRIVATE)
+            .getString(key, null)
+        return if (storedSecuredValue != null) {
+            decryptCipherText(storedSecuredValue)
+        } else {
+            null
+        }
+    }
+
+    /**
+     * To Store Secured Value In SharedPreference Against A Key.
+     */
+    override fun saveSecuredValue(key: String, value: String) {
+        context
+            .getSharedPreferences(TAG, Context.MODE_PRIVATE)
+            .edit()
+            .putString(key, encryptClearText(value))
+            .apply()
+    }
+
+    /**
      * To Show Keyboard On Provided [EditText].
      */
     override fun showKeyboard(editText: EditText) {

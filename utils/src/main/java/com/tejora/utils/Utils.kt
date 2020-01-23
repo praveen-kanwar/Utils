@@ -125,6 +125,16 @@ interface Utils {
     fun requestSMSPermission(requestCode: Int, permissions: Array<String>, grantResults: IntArray)
 
     /**
+     * To Retrieve Secured Value Stored In SharedPreference Against A Key.
+     */
+    fun retrieveSecuredValue(key: String): String?
+
+    /**
+     * To Store Secured Value In SharedPreference Against A Key.
+     */
+    fun saveSecuredValue(key: String, value: String)
+
+    /**
      * To Show Keyboard On Provided EditText
      */
     fun showKeyboard(editText: EditText)
