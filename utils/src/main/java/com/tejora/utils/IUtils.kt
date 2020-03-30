@@ -10,6 +10,7 @@ import android.net.NetworkRequest
 import android.os.Build
 import android.provider.Settings
 import android.telephony.TelephonyManager
+import android.text.TextUtils
 import android.util.Base64
 import android.util.Log
 import android.util.Patterns
@@ -565,7 +566,12 @@ constructor(
             when {
                 message.contains(contains) -> {
                     showLog(TAG, "Message received : $message")
-                    val otp = utilsDependencyProvided.extractSixDigitOTP(message).trim()
+                    var otp = utilsDependencyProvided.extractSixDigitOTP(message).trim()
+                    showLog(TAG, "Six Digit OTP : $otp")
+                    if (TextUtils.isEmpty(otp)) {
+                        otp = utilsDependencyProvided.extractFourDigitOTP(message).trim()
+                        showLog(TAG, "Four Digit OTP : $otp")
+                    }
                     showLog(TAG, "Received OTP : $otp")
                     val otpArray = otp.toCharArray()
                     var isValidOTP = true

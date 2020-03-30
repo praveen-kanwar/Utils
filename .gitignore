@@ -1,10 +1,12 @@
 
-# Created by https://www.gitignore.io/api/java,swift,linux,xcode,maven,macos,kotlin,gradle,android,windows,eclipse,netbeans,cocoapods,objective-c,androidstudio,xcodeinjection
+# Created by https://www.gitignore.io/api/java,linux,macos,gradle,kotlin,android,windows,flutter,firebase,intellij,androidstudio
+# Edit at https://www.gitignore.io/?templates=java,linux,macos,gradle,kotlin,android,windows,flutter,firebase,intellij,androidstudio
 
 ### Android ###
 # Built application files
 *.apk
 *.ap_
+*.aab
 
 # Files for the ART/Dalvik VM
 *.dex
@@ -38,19 +40,22 @@ captures/
 
 # IntelliJ
 *.iml
-.idea/kotlinc.xml
 .idea/workspace.xml
 .idea/tasks.xml
 .idea/gradle.xml
 .idea/assetWizardSettings.xml
 .idea/dictionaries/*
-!.idea/dictionaries/developer.xml
+!.idea/dictionaries/project_dictionary.xml
 .idea/libraries
 .idea/caches
+# Android Studio 3 in .gitignore file.
+.idea/caches/build_file_checksums.ser
+.idea/modules.xml
 
 # Keystore files
-# Uncomment the following line if you do not want to check your keystore files in.
+# Uncomment the following lines if you do not want to check your keystore files in.
 #*.jks
+#*.keystore
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild
@@ -70,8 +75,19 @@ fastlane/screenshots
 fastlane/test_output
 fastlane/readme.md
 
+# Version control
+vcs.xml
+
+# lint
+lint/intermediates/
+lint/generated/
+lint/outputs/
+lint/tmp/
+# lint/reports/
+
 ### Android Patch ###
 gen-external-apklibs
+output.json
 
 ### AndroidStudio ###
 # Covers files to be ignored for android development using Android Studio.
@@ -118,25 +134,25 @@ obj/
 /out/
 
 # User-specific configurations
-.idea/.name
 .idea/caches/
-.idea/codeStyles/Project.xml
+.idea/libraries/
+.idea/shelf/
+.idea/.name
 .idea/compiler.xml
 .idea/copyright/profiles_settings.xml
-.idea/dataSources.ids
-.idea/datasources.xml
-.idea/dynamic.xml
 .idea/encodings.xml
-.idea/jsLibraryMappings.xml
-.idea/libraries/
 .idea/misc.xml
-.idea/modules.xml
-.idea/runConfigurations.xml
 .idea/scopes/scope_settings.xml
-.idea/shelf/
-.idea/sqlDataSources.xml
-.idea/uiDesigner.xml
 .idea/vcs.xml
+.idea/jsLibraryMappings.xml
+.idea/datasources.xml
+.idea/dataSources.ids
+.idea/sqlDataSources.xml
+.idea/dynamic.xml
+.idea/uiDesigner.xml
+.idea/codeStyles/codeStyleConfig.xml
+.idea/codeStyles/Project.xml
+.idea/runConfigurations.xml
 
 # OS-specific files
 .DS_Store
@@ -184,76 +200,136 @@ fabric.properties
 
 !/gradle/wrapper/gradle-wrapper.jar
 
-### CocoaPods ###
-## CocoaPods GitIgnore Template
+### Firebase ###
+**/node_modules/*
+**/.firebaserc
 
-# CocoaPods - Only use to conserve bandwidth / Save time on Pushing
-#           - Also handy if you have a large number of dependant pods
-#           - AS PER https://guides.cocoapods.org/using/using-cocoapods.html NEVER IGNORE THE LOCK FILE
-Pods/
+### Firebase Patch ###
+.runtimeconfig.json
+.firebase/
 
-### Eclipse ###
+### Flutter ###
+# Flutter/Dart/Pub related
+**/doc/api/
+.dart_tool/
+.flutter-plugins
+.packages
+.pub-cache/
+.pub/
 
-.metadata
-tmp/
-*.tmp
-*.bak
-*~.nib
-.loadpath
-.recommenders
+# Android related
+**/android/**/gradle-wrapper.jar
+**/android/.gradle
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
 
-# External tool builders
-.externalToolBuilders/
+# iOS/XCode related
+**/ios/**/*.mode1v3
+**/ios/**/*.mode2v3
+**/ios/**/*.moved-aside
+**/ios/**/*.pbxuser
+**/ios/**/*.perspectivev3
+**/ios/**/*sync/
+**/ios/**/.sconsign.dblite
+**/ios/**/.tags*
+**/ios/**/.vagrant/
+**/ios/**/DerivedData/
+**/ios/**/Icon?
+**/ios/**/Pods/
+**/ios/**/.symlinks/
+**/ios/**/profile
+**/ios/**/xcuserdata
+**/ios/.generated/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
 
-# Locally stored "Eclipse launch configurations"
-*.launch
+# Exceptions to above rules.
+!**/ios/**/default.mode1v3
+!**/ios/**/default.mode2v3
+!**/ios/**/default.pbxuser
+!**/ios/**/default.perspectivev3
+!/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 
-# PyDev specific (Python IDE for Eclipse)
-*.pydevproject
+### Intellij ###
+# Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and WebStorm
+# Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
 
-# CDT-specific (C/C++ Development Tooling)
+# User-specific stuff
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/shelf
 
-# CDT- autotools
-.autotools
+# Generated files
+.idea/**/contentModel.xml
 
-# Java annotation processor (APT)
-.factorypath
+# Sensitive or high-churn files
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
+.idea/**/dbnavigator.xml
 
-# PDT-specific (PHP Development Tools)
-.buildpath
+# Gradle
+.idea/**/gradle.xml
+.idea/**/libraries
 
-# sbteclipse plugin
-.target
+# Gradle and Maven with auto-import
+# When using Gradle or Maven with auto-import, you should exclude module files,
+# since they will be recreated, and may cause churn.  Uncomment if using
+# auto-import.
+# .idea/modules.xml
+# .idea/*.iml
+# .idea/modules
 
-# Tern plugin
-.tern-project
+# CMake
+cmake-build-*/
 
-# TeXlipse plugin
-.texlipse
+# Mongo Explorer plugin
+.idea/**/mongoSettings.xml
 
-# STS (Spring Tool Suite)
-.springBeans
+# File-based project format
 
-# Code Recommenders
-.recommenders/
+# IntelliJ
 
-# Annotation Processing
-.apt_generated/
+# mpeltonen/sbt-idea plugin
 
-# Scala IDE specific (Scala & Java development for Eclipse)
-.cache-main
-.scala_dependencies
-.worksheet
+# JIRA plugin
 
-### Eclipse Patch ###
-# Eclipse Core
+# Cursive Clojure plugin
+.idea/replstate.xml
 
-# JDT-specific (Eclipse Java Development Tools)
+# Crashlytics plugin (for Android Studio and IntelliJ)
 
-# Annotation Processing
-.apt_generated
+# Editor-based Rest Client
+.idea/httpRequests
 
-.sts4-cache/
+# Android studio 3.1+ serialized cache file
+
+# JetBrains templates
+**___jb_tmp___
+
+### Intellij Patch ###
+# Comment Reason: https://github.com/joeblau/gitignore.io/issues/186#issuecomment-215987721
+
+# *.iml
+# modules.xml
+# .idea/misc.xml
+# *.ipr
+
+# Sonarlint plugin
+.idea/sonarlint
 
 ### Java ###
 # Compiled class file
@@ -269,7 +345,8 @@ tmp/
 *.jar
 *.nar
 *.zip
-!citylist.zip
+### Manual Exclusions ###
+!data/src/main/assets/*
 *.tar.gz
 *.rar
 
@@ -326,147 +403,6 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-### Maven ###
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
-dependency-reduced-pom.xml
-buildNumber.properties
-.mvn/timing.properties
-.mvn/wrapper/maven-wrapper.jar
-
-### NetBeans ###
-nbproject/private/
-nbbuild/
-dist/
-nbdist/
-.nb-gradle/
-
-### Objective-C ###
-# Xcode
-#
-# gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
-
-## Build generated
-DerivedData/
-
-## Various settings
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
-xcuserdata/
-
-## Other
-*.moved-aside
-*.xccheckout
-*.xcscmblueprint
-
-## Obj-C/Swift specific
-*.hmap
-*.ipa
-*.dSYM.zip
-*.dSYM
-
-# CocoaPods
-#
-# We recommend against adding the Pods directory to your .gitignore. However
-# you should judge for yourself, the pros and cons are mentioned at:
-# https://guides.cocoapods.org/using/using-cocoapods.html#should-i-check-the-pods-directory-into-source-control
-#
-# Pods/
-#
-# Add this line if you want to avoid checking in source code from the Xcode workspace
-# *.xcworkspace
-
-# Carthage
-#
-# Add this line if you want to avoid checking in source code from Carthage dependencies.
-# Carthage/Checkouts
-
-Carthage/Build
-
-# fastlane
-#
-# It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the
-# screenshots whenever they are needed.
-# For more information about the recommended setup visit:
-# https://docs.fastlane.tools/best-practices/source-control/#source-control
-
-fastlane/screenshots/**/*.png
-
-# Code Injection
-#
-# After new code Injection tools there's a generated folder /iOSInjectionProject
-# https://github.com/johnno1962/injectionforxcode
-
-iOSInjectionProject/
-
-### Objective-C Patch ###
-
-### Swift ###
-# Xcode
-#
-# gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
-
-## Build generated
-
-## Various settings
-
-## Other
-
-## Obj-C/Swift specific
-
-## Playgrounds
-timeline.xctimeline
-playground.xcworkspace
-
-# Swift Package Manager
-#
-# Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
-# Packages/
-# Package.pins
-# Package.resolved
-.build/
-
-# CocoaPods
-#
-# We recommend against adding the Pods directory to your .gitignore. However
-# you should judge for yourself, the pros and cons are mentioned at:
-# https://guides.cocoapods.org/using/using-cocoapods.html#should-i-check-the-pods-directory-into-source-control
-#
-# Pods/
-#
-# Add this line if you want to avoid checking in source code from the Xcode workspace
-# *.xcworkspace
-
-# Carthage
-#
-# Add this line if you want to avoid checking in source code from Carthage dependencies.
-# Carthage/Checkouts
-
-
-# fastlane
-#
-# It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the
-# screenshots whenever they are needed.
-# For more information about the recommended setup visit:
-# https://docs.fastlane.tools/best-practices/source-control/#source-control
-
-
-# Code Injection
-#
-# After new code Injection tools there's a generated folder /iOSInjectionProject
-# https://github.com/johnno1962/injectionforxcode
-
-
 ### Windows ###
 # Windows thumbnail cache files
 ehthumbs_vista.db
@@ -490,33 +426,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-### Xcode ###
-# Xcode
-#
-# gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
-
-## User settings
-
-## compatibility with Xcode 8 and earlier (ignoring not required starting Xcode 9)
-
-## compatibility with Xcode 3 and earlier (ignoring not required starting Xcode 4)
-
-### Xcode Patch ###
-*.xcodeproj/*
-!*.xcodeproj/project.pbxproj
-!*.xcodeproj/xcshareddata/
-!*.xcworkspace/contents.xcworkspacedata
-/*.gcno
-
-### XcodeInjection ###
-# Code Injection
-#
-# After new code Injection tools there's a generated folder /iOSInjectionProject
-# https://github.com/johnno1962/injectionforxcode
-
-
 ### Gradle ###
-/build/
 
 # Ignore Gradle GUI config
 gradle-app.setting
@@ -530,8 +440,7 @@ gradle-app.setting
 # # Work around https://youtrack.jetbrains.com/issue/IDEA-116898
 # gradle/wrapper/gradle-wrapper.properties
 
+### Gradle Patch ###
+**/build/
 
-# End of https://www.gitignore.io/api/java,swift,linux,xcode,maven,macos,kotlin,gradle,android,windows,eclipse,netbeans,cocoapods,objective-c,androidstudio,xcodeinjection
-presentation/src/main/java/com/tejora/experian/avanse/android/pl/ui/upload/documents/dialog/DialogImageOptions.kt
-presentation/version.properties
-presentation/version.properties
+# End of https://www.gitignore.io/api/java,linux,macos,gradle,kotlin,android,windows,flutter,firebase,intellij,androidstudio

@@ -143,11 +143,23 @@ constructor(private val context: Context, private val gson: Gson) {
     }
 
     /**
+     * Extract Four Digit OTP From Given String
+     * @return OTP Of Six Digit Extracted From Input [String] Of SMS.
+     */
+    fun extractFourDigitOTP(sms: String): String {
+        val otpPattern = Pattern.compile("\\d{4}")
+        val otpMatcher = otpPattern.matcher(sms)
+        return if (otpMatcher.find()) {
+            ((otpMatcher.group(0)) ?: "")
+        } else ""
+    }
+
+    /**
      * Extract Six Digit OTP From Given String
      * @return OTP Of Six Digit Extracted From Input [String] Of SMS.
      */
     fun extractSixDigitOTP(sms: String): String {
-        val otpPattern = Pattern.compile("^\\d+(?=\\sis)|(?<=is\\s)\\d+\\.?\$")
+        val otpPattern = Pattern.compile("\\d{6}")
         val otpMatcher = otpPattern.matcher(sms)
         return if (otpMatcher.find()) {
             ((otpMatcher.group(0)) ?: "")

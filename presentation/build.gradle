@@ -6,8 +6,8 @@ apply plugin: 'kotlin-android-extensions'
 
 android {
     // Build Specifications
-    compileSdkVersion 28
-    buildToolsVersion '28.0.3'
+    compileSdkVersion 29
+    buildToolsVersion '29.0.3'
 
     // To Auto Increment VersionName & VersionCode of Application
     def versionPropsFile = file('version.properties')
@@ -54,7 +54,7 @@ android {
     defaultConfig {
         applicationId 'com.tejora.utils.sample'
         minSdkVersion 21
-        targetSdkVersion 28
+        targetSdkVersion 29
         multiDexEnabled true
         versionCode versionC
         versionName versionN
