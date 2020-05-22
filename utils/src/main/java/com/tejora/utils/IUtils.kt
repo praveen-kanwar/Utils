@@ -318,7 +318,7 @@ constructor(
     override fun isDeviceRooted(): Observable<Boolean> {
         return Observable.create { isDeviceRooted ->
             try {
-                val rootBeerResponse = RootBeer(context).isRootedWithoutBusyBoxCheck
+                val rootBeerResponse = RootBeer(context).isRooted
                 if (rootBeerResponse) {
                     // If Device Is Found To Be Rooted With RootBeer Library
                     isDeviceRooted.onNext(rootBeerResponse)
@@ -375,16 +375,21 @@ constructor(
                              */
                             val mResult = attestationResponse.jwsResult
                             showLog(TAG, "Success! SafetyNet result:\n$mResult\n")
-                            val response =
-                                utilsDependencyProvided.parseJsonWebSignature(mResult)
-                            showLog(
-                                TAG,
-                                "Success! SafetyNet Parsed result: ${gson.toJson(response)}"
-                            )
-                            // Emitting Response Of SafetyNet Negating Value As True Indicate Device Isn't Rooted.
-                            isDeviceRooted.onNext(!response!!.basicIntegrity)
-                            // Completing
-                            isDeviceRooted.onComplete()
+
+                            utilsDependencyProvided.parseJsonWebSignature(mResult)?.apply {
+                                showLog(
+                                    TAG,
+                                    "Success! SafetyNet Parsed result: ${gson.toJson(this)}"
+                                )
+                                showLog(
+                                    TAG,
+                                    "Basic Integrity -> ${this.basicIntegrity} Returning -> ${!this.basicIntegrity}"
+                                )
+                                // Emitting Response Of SafetyNet Negating Value As True Indicate Device Isn't Rooted.
+                                isDeviceRooted.onNext(!this.basicIntegrity)
+                                // Completing
+                                isDeviceRooted.onComplete()
+                            }
                         }
                         .addOnFailureListener { exception ->
                             // An error occurred while communicating with the service.
