@@ -17,7 +17,6 @@ import android.util.Base64
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import com.google.gson.Gson
-import com.tejora.utils.bean.SafetyNetResponse
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.math.BigInteger
@@ -444,13 +443,12 @@ constructor(private val context: Context, private val gson: Gson) {
      * Parse SafetyNet Response
      * Can Be Retrieved Later via [fetchDatabaseEncryptionKey]
      */
-    fun parseJsonWebSignature(jwsResult: String?): SafetyNetResponse? {
+    fun parseJsonWebSignature(jwsResult: String?): String {
         val jwtParts = jwsResult?.split("\\.".toRegex())?.dropLastWhile { it.isEmpty() }
         return jwtParts?.takeIf { it.size >= 2 }?.let {
             // We're only interested in the body/payload
-            val decodedPayload = String(Base64.decode(it[1], Base64.DEFAULT))
-            gson.fromJson(decodedPayload, SafetyNetResponse::class.java)
-        }
+            String(Base64.decode(it[1], Base64.DEFAULT))
+        }.toString()
     }
 
     /**

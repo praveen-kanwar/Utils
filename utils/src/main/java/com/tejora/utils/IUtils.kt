@@ -25,6 +25,7 @@ import com.scottyab.rootbeer.RootBeer
 import com.stfalcon.smsverifycatcher.OnSmsCatchListener
 import com.stfalcon.smsverifycatcher.SmsVerifyCatcher
 import io.reactivex.Observable
+import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
@@ -375,18 +376,24 @@ constructor(
                              */
                             val mResult = attestationResponse.jwsResult
                             showLog(TAG, "Success! SafetyNet result:\n$mResult\n")
-
-                            utilsDependencyProvided.parseJsonWebSignature(mResult)?.apply {
-                                showLog(
-                                    TAG,
-                                    "Success! SafetyNet Parsed result: ${gson.toJson(this)}"
-                                )
-                                showLog(
-                                    TAG,
-                                    "Basic Integrity -> ${this.basicIntegrity} Returning -> ${!this.basicIntegrity}"
-                                )
-                                // Emitting Response Of SafetyNet Negating Value As True Indicate Device Isn't Rooted.
-                                isDeviceRooted.onNext(!this.basicIntegrity)
+                            utilsDependencyProvided.parseJsonWebSignature(mResult).apply {
+                                showLog(TAG, "SafetyNet Response In String: $this")
+                                val jsonObject = JSONObject(this)
+                                showLog(TAG, "SafetyNet Response JSON: $jsonObject")
+                                val basicIntegrity = jsonObject.getBoolean("basicIntegrity")
+                                showLog(TAG, "Device Basic Integrity: $basicIntegrity")
+                                when (basicIntegrity) {
+                                    // Device Is Not Rooted
+                                    true -> {
+                                        // No Device Isn't Rooted
+                                        isDeviceRooted.onNext(false)
+                                    }
+                                    // Device Is Rooted
+                                    false -> {
+                                        // Yes Device Is Rooted
+                                        isDeviceRooted.onNext(true)
+                                    }
+                                }
                                 // Completing
                                 isDeviceRooted.onComplete()
                             }
